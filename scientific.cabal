@@ -1,0 +1,63 @@
+name:                scientific
+version:             0.0.0.0
+synopsis:            Arbitrary-precision floating-point numbers represented using scientific notation
+description:         A @Scientific@ number is an arbitrary-precision floating-point number
+                     represented using scientific notation.
+                     .
+                     A scientific number with 'coefficient' @c@ and
+                     'base10Exponent' @e@ corresponds to the
+                     'Fractional' number: @'fromInteger' c * 10 '^^' e@
+                     .
+                     Its primary use-case is to serve as the target of
+                     parsing floating point numbers. Since the textual
+                     representation of floating point numbers use
+                     scientific notation they can be efficiently
+                     parsed to a @Scientific@ number.
+homepage:            https://github.com/basvandijk/scientific
+bug-reports:         https://github.com/basvandijk/scientific/issues
+license:             BSD3
+license-file:        LICENSE
+author:              Bas van Dijk
+maintainer:          Bas van Dijk <v.dijk.bas@gmail.com>
+category:            Data
+build-type:          Simple
+cabal-version:       >=1.10
+
+source-repository head
+  type:     git
+  location: git://github.com/basvandijk/scientific.git
+
+library
+  exposed-modules:     Data.Scientific
+  other-extensions:    DeriveDataTypeable, BangPatterns
+  ghc-options:         -Wall
+  build-depends:       base     >= 4.6   && < 4.7
+                     , deepseq  >= 1.3   && < 1.4
+                     , text     >= 0.8   && < 0.12
+                     , hashable >= 1.1.2 && < 1.3
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
+test-suite test-scientific
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          test.hs
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+  build-depends: scientific
+               , base             >= 4.6   && < 4.7
+               , tasty            >= 0.3.1 && < 0.4
+               , tasty-smallcheck >= 0.2   && < 0.3
+               , smallcheck       >= 1.0   && < 1.1
+               , text             >= 0.8   && < 0.12
+
+benchmark bench-scientific
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   bench
+  main-is:          bench.hs
+  default-language: Haskell2010
+  ghc-options:      -O2
+  build-depends:    scientific
+                  , base       >= 4.6 && < 4.7
+                  , criterion  >= 0.5 && < 0.9
