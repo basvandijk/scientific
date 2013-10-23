@@ -308,7 +308,7 @@ fromRealFloat :: (RealFloat a) => a -> Scientific
 fromRealFloat rf
       -- integers are way more efficient to convert via Rational.
       -- We do pay the cost of always converting to Rational first though.
-    | denominator rat == 1 = fromRational rat
+    | denominator rat == 1 = fromInteger $ numerator rat
     | rf < 0               = negate $ fromNonNegRealFloat $ negate rf
     | otherwise            =          fromNonNegRealFloat          rf
     where
