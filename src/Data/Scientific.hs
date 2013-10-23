@@ -88,7 +88,7 @@ instance Hashable Scientific where
     hashWithSalt salt = hashWithSalt salt . toRational
 
 instance Show Scientific where
-    showsPrec _ = showString . formatScientific Generic Nothing
+    show = formatScientific Generic Nothing
 
 instance Read Scientific where
     readPrec = ReadPrec.lift scientificP
