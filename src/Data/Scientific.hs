@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, BangPatterns #-}
 
 -- TODO: The following extensions are needed for scientificBuilder:
-{-# LANGUAGE MagicHash, OverloadedStrings #-}
+{-# LANGUAGE CPP, MagicHash, OverloadedStrings #-}
 
 -- |
 -- Module      :  Data.Scientific
@@ -36,7 +36,7 @@ module Data.Scientific
 
 ----------------------------------------------------------------------
 
-import           Control.Applicative (pure, (<|>), (*>))
+import           Control.Monad       (mplus)
 import           Control.DeepSeq     (NFData)
 import           Data.Char           (intToDigit, ord)
 import           Data.Function       (on)
@@ -55,9 +55,15 @@ import           Text.ParserCombinators.ReadP     ( ReadP )
 import Data.Text.Lazy.Builder       (Builder, fromString, singleton, fromText)
 import Data.Text.Lazy.Builder.Int   (decimal)
 import qualified Data.Text as T     (replicate)
-import Data.Monoid                  ((<>))
 import GHC.Base                     (Int(I#), Char(C#), chr#, ord#, (+#))
-
+#if MIN_VERSION_base(4,5,0)
+import Data.Monoid                  ((<>))
+#else
+import Data.Monoid                  (Monoid, mappend)
+(<>) :: Monoid a => a -> a -> a
+(<>) = mappend
+infixr 6 <>
+#endif
 
 ----------------------------------------------------------------------
 
@@ -95,7 +101,7 @@ instance Read Scientific where
 
 scientificP :: ReadP Scientific
 scientificP = do
-  let positive = (('+' ==) <$> ReadP.satisfy isSign) <|> pure True
+  let positive = (('+' ==) <$> ReadP.satisfy isSign) `mplus` return True
   pos <- positive
 
   let step :: Num a => a -> Int -> a
@@ -106,7 +112,7 @@ scientificP = do
   let s = Scientific n 0
       fractional = foldDigits (\(Scientific a e) digit -> scientific (step a digit) (e-1)) s
 
-  Scientific coeff expnt <- (ReadP.satisfy (== '.') *> fractional) <|> pure s
+  Scientific coeff expnt <- (ReadP.satisfy (== '.') >> fractional) `mplus` return s
 
   let signedCoeff | pos       = coeff
                   | otherwise = negate coeff
@@ -114,23 +120,23 @@ scientificP = do
       eP = do posE <- positive
               e <- foldDigits step 0
               if posE
-                then pure e
-                else pure $ negate e
+                then return e
+                else return $ negate e
 
-  (ReadP.satisfy isE *>
-         ((scientific signedCoeff . (expnt +)) <$> eP)) <|>
-     pure (scientific signedCoeff    expnt)
+  (ReadP.satisfy isE >>
+           ((scientific signedCoeff . (expnt +)) <$> eP)) `mplus`
+     return (scientific signedCoeff    expnt)
 
 foldDigits :: (a -> Int -> a) -> a -> ReadP a
 foldDigits f z = ReadP.look >>= go z
     where
-      go !a [] = pure a
+      go !a [] = return a
       go !a (c:cs)
           | isDecimal c = do
               _ <- ReadP.get
               let digit = ord c - 48
               go (f a digit) cs
-          | otherwise = pure a
+          | otherwise = return a
 
 isDecimal :: Char -> Bool
 isDecimal c = c >= '0' && c <= '9'
