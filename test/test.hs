@@ -88,11 +88,8 @@ main = defaultMain $ testGroup "scientific"
     ]
 
   , testGroup "Conversions"
-    [ testProperty "toFractional"  $ \s ->
-        Scientific.toFractional s == toRational s
-
-    , testProperty "fromRealFloat" $ \(d::Double) ->
-        toRational (Scientific.fromRealFloat d) == toRational d
+    [ testProperty "fromRealFloat" $ \s ->
+        Scientific.fromFloatDigits (realToFrac s :: Double) === s
     ]
   ]
 

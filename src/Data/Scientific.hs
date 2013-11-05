@@ -21,8 +21,7 @@ module Data.Scientific
     , base10Exponent
 
       -- * Conversions
-    , toFractional
-    , fromRealFloat
+    , fromFloatDigits
 
       -- * Pretty printing
     , FPFormat(..)
@@ -44,7 +43,6 @@ import           Data.Functor        ((<$>))
 import           Data.Hashable       (Hashable(..))
 import           Data.Ratio          ((%), numerator, denominator)
 import           Data.Typeable       (Typeable)
-import           Foreign.C.Types     (CDouble, CFloat)
 import           Numeric             (floatToDigits)
 import           Text.Read           (readPrec)
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
@@ -222,20 +220,19 @@ instance Fractional Scientific where
     {-# INLINE recip #-}
 
     fromRational rational
-        | numer < 0 = negate $ go (negate numer) 0 0
-        | otherwise =          go         numer  0 0
+        | numer < 0 = negate $ longDiv (negate numer) 0 0
+        | otherwise =          longDiv         numer  0 0
       where
         numer = numerator   rational
         denom = denominator rational
 
-        go :: Integer -> Integer -> Int -> Scientific
-        go  0 !c !e     = scientific c e
-        go !n !c !e
-            | n < denom = go (n*10) (c * 10) (e-1) -- TODO: Use a logarithm here!
-            | otherwise = go r      (c + q)   e
+        longDiv :: Integer -> Integer -> Int -> Scientific
+        longDiv  0 !c !e = scientific c e
+        longDiv !n !c !e
+            | n < denom  = longDiv (n*10) (c * 10) (e-1) -- TODO: Use a logarithm here!
+            | otherwise  = longDiv r      (c + q)   e
           where
             (q, r) = n `quotRem` denom
-    {-# INLINE fromRational #-}
 
 instance RealFrac Scientific where
     properFraction (Scientific c e)
@@ -276,42 +273,10 @@ whenFloating f (Scientific c e)
 
 ----------------------------------------------------------------------
 
-{-# RULES
-"realToFrac/Scientific->Scientific" realToFrac = id :: Scientific -> Scientific #-}
-
--- | Efficient conversion from a 'Scientific' to a 'Fractional' number.
---
--- Note that this module provides rewrite RULES that convert
--- 'realToFrac' into 'toFractional' when going from a 'Scientific' to
--- either a 'Double', 'Float', 'CDouble' or 'CFloat' to avoid going
--- via 'Rational'.
---
--- So it's recommended to use 'realToFrac' to convert to a
--- 'Fractional' number. However, if you don't want to rely on these
--- RULES this function can be used.
-toFractional :: (Fractional a) => Scientific -> a
-toFractional = whenFloating $ \c e -> fromInteger c / 10 ^ negate e
-{-# INLINE toFractional #-}
-
-{-# RULES
-"realToFrac/Scientific->Double"  realToFrac = toFractional :: Scientific -> Double
-"realToFrac/Scientific->Float"   realToFrac = toFractional :: Scientific -> Float
-"realToFrac/Scientific->CDouble" realToFrac = toFractional :: Scientific -> CDouble
-"realToFrac/Scientific->CFloat"  realToFrac = toFractional :: Scientific -> CFloat #-}
-
--- | Efficient conversion from a 'RealFloat' into a 'Scientific'
--- number.
---
--- Note that this module provides rewrite RULES that convert
--- 'realToFrac' into 'fromRealFloat' when going from either a
--- 'Double', 'Float', 'CDouble' or 'CFloat' to a 'Scientific' to avoid
--- going via 'Rational'.
---
--- So it's recommended to use 'realToFrac' to convert 'Real' numbers
--- into 'Scientific'. However, if you don't want to rely on these
--- RULES this function can be used.
-fromRealFloat :: (RealFloat a) => a -> Scientific
-fromRealFloat rf
+-- | Efficient and exact conversion from a 'RealFloat' into a
+-- 'Scientific' number.
+fromFloatDigits :: (RealFloat a) => a -> Scientific
+fromFloatDigits rf
       -- integers are way more efficient to convert via Rational.
       -- We do pay the cost of always converting to Rational first though.
     | denominator rat == 1 = fromInteger $ numerator rat
@@ -326,13 +291,6 @@ fromRealFloat rf
 
           go []     !c !n = scientific c (e - n)
           go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
-{-# INLINE fromRealFloat #-}
-
-{-# RULES
-"realToFrac/Double->Scientific"  realToFrac = fromRealFloat :: Double  -> Scientific
-"realToFrac/Float->Scientific"   realToFrac = fromRealFloat :: Float   -> Scientific
-"realToFrac/CDouble->Scientific" realToFrac = fromRealFloat :: CDouble -> Scientific
-"realToFrac/CFloat->Scientific"  realToFrac = fromRealFloat :: CFloat  -> Scientific #-}
 
 ----------------------------------------------------------------------
 
