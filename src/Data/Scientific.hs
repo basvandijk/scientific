@@ -38,11 +38,11 @@ module Data.Scientific
 import           Control.Monad       (mplus)
 import           Control.DeepSeq     (NFData)
 import           Data.Char           (intToDigit, ord)
+import           Data.Data           (Data, Typeable)
 import           Data.Function       (on)
 import           Data.Functor        ((<$>))
 import           Data.Hashable       (Hashable(..))
 import           Data.Ratio          ((%), numerator, denominator)
-import           Data.Typeable       (Typeable)
 import           Numeric             (floatToDigits)
 import           Text.Read           (readPrec)
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
@@ -76,7 +76,7 @@ infixr 6 <>
 data Scientific = Scientific
     { coefficient    ::                !Integer -- ^ The coefficient of a scientific number.
     , base10Exponent :: {-# UNPACK #-} !Int     -- ^ The base-10 exponent of a scientific number.
-    } deriving (Typeable)
+    } deriving (Typeable, Data)
 
 -- | @scientific c e@ constructs a scientific number with
 -- 'coefficient' @c@ and 'base10Exponent' @e@.
