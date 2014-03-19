@@ -13,6 +13,10 @@ import Data.Scientific as Scientific
 import Test.SmallCheck.Series -- (Serial, series, cons2)
 import qualified Data.Text.Lazy as TL (unpack)
 import qualified Data.Text.Lazy.Builder as TLB (toLazyText)
+import qualified Data.ByteString.Builder as B
+import qualified Data.ByteString.Lazy.Char8 as BLC8
+import Data.ByteString.Builder.Scientific as B
+import Data.Text.Lazy.Builder.Scientific  as T
 
 main :: IO ()
 main = defaultMain $ testGroup "scientific"
@@ -21,9 +25,15 @@ main = defaultMain $ testGroup "scientific"
 
     , testProperty "toDecimalDigits_laws"
                     toDecimalDigits_laws
-    , testProperty "Builder" $ \s ->
-        formatScientific Generic Nothing s ==
-        TL.unpack (TLB.toLazyText $ formatScientificBuilder Generic Nothing s)
+    , testGroup "Builder"
+      [ testProperty "Text" $ \s ->
+          formatScientific B.Generic Nothing s ==
+          TL.unpack (TLB.toLazyText $ T.formatScientificBuilder B.Generic Nothing s)
+
+      , testProperty "ByteString" $ \s ->
+          formatScientific B.Generic Nothing s ==
+          BLC8.unpack (B.toLazyByteString $ B.formatScientificBuilder B.Generic Nothing s)
+      ]
     ]
 
   , testGroup "Num"

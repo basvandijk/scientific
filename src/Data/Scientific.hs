@@ -1,8 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, BangPatterns #-}
 
--- TODO: The following extensions are needed for scientificBuilder:
-{-# LANGUAGE CPP, MagicHash, OverloadedStrings #-}
-
 -- |
 -- Module      :  Data.Scientific
 -- Copyright   :  Bas van Dijk 2013
@@ -24,10 +21,6 @@ module Data.Scientific
     , fromFloatDigits
 
       -- * Pretty printing
-    , FPFormat(..)
-
-    , scientificBuilder
-    , formatScientificBuilder
     , formatScientific
 
     , toDecimalDigits
@@ -49,20 +42,7 @@ import           Text.Read           (readPrec)
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
 import qualified Text.ParserCombinators.ReadP    as ReadP
 import           Text.ParserCombinators.ReadP     ( ReadP )
-
--- TODO: The following imports are needed for the scientificBuilder:
-import Data.Text.Lazy.Builder       (Builder, fromString, singleton, fromText)
-import Data.Text.Lazy.Builder.Int   (decimal)
-import qualified Data.Text as T     (replicate)
-import GHC.Base                     (Int(I#), Char(C#), chr#, ord#, (+#))
-#if MIN_VERSION_base(4,5,0)
-import Data.Monoid                  ((<>))
-#else
-import Data.Monoid                  (Monoid, mappend)
-(<>) :: Monoid a => a -> a -> a
-(<>) = mappend
-infixr 6 <>
-#endif
+import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 
 ----------------------------------------------------------------------
 
@@ -325,93 +305,6 @@ toDecimalDigits (Scientific c e) = (is, n + e)
       where
         rev []     a !m = (a, m)
         rev (x:xs) a !m = rev xs (x:a) (m+1)
-
-----------------------------------------------------------------------
-
--- | Control the rendering of floating point numbers.
-data FPFormat = Exponent
-              -- ^ Scientific notation (e.g. @2.3e123@).
-              | Fixed
-              -- ^ Standard decimal notation.
-              | Generic
-              -- ^ Use decimal notation for values between @0.1@ and
-              -- @9,999,999@, and scientific notation otherwise.
-                deriving (Enum, Read, Show)
-
--- | A @Text@ @Builder@ which renders a scientific number to full
--- precision, using standard decimal notation for arguments whose
--- absolute value lies between @0.1@ and @9,999,999@, and scientific
--- notation otherwise.
-scientificBuilder :: Scientific -> Builder
-scientificBuilder = formatScientificBuilder Generic Nothing
-
--- | Like 'scientificBuilder' but provides rendering options.
-formatScientificBuilder :: FPFormat
-                        -> Maybe Int  -- ^ Number of decimal places to render.
-                        -> Scientific
-                        -> Builder
-formatScientificBuilder fmt decs scntfc@(Scientific c _)
-   | c < 0 = singleton '-' <> doFmt fmt (toDecimalDigits (-scntfc))
-   | otherwise =              doFmt fmt (toDecimalDigits   scntfc)
- where
-  doFmt format (is, e) =
-    let ds = map i2d is in
-    case format of
-     Generic ->
-      doFmt (if e < 0 || e > 7 then Exponent else Fixed)
-            (is,e)
-     Exponent ->
-      case decs of
-       Nothing ->
-        let show_e' = decimal (e-1) in
-        case ds of
-          "0"     -> "0.0e0"
-          [d]     -> singleton d <> ".0e" <> show_e'
-          (d:ds') -> singleton d <> singleton '.' <> fromString ds' <> singleton 'e' <> show_e'
-          []      -> error "formatRealFloat/doFmt/Exponent: []"
-       Just dec ->
-        let dec' = max dec 1 in
-        case is of
-         [0] -> "0." <> fromText (T.replicate dec' "0") <> "e0"
-         _ ->
-          let
-           (ei,is') = roundTo (dec'+1) is
-           (d:ds') = map i2d (if ei > 0 then init is' else is')
-          in
-          singleton d <> singleton '.' <> fromString ds' <> singleton 'e' <> decimal (e-1+ei)
-     Fixed ->
-      let
-       mk0 ls = case ls of { "" -> "0" ; _ -> fromString ls}
-      in
-      case decs of
-       Nothing
-          | e <= 0    -> "0." <> fromText (T.replicate (-e) "0") <> fromString ds
-          | otherwise ->
-             let
-                f 0 s    rs  = mk0 (reverse s) <> singleton '.' <> mk0 rs
-                f n s    ""  = f (n-1) ('0':s) ""
-                f n s (r:rs) = f (n-1) (r:s) rs
-             in
-                f e "" ds
-       Just dec ->
-        let dec' = max dec 0 in
-        if e >= 0 then
-         let
-          (ei,is') = roundTo (dec' + e) is
-          (ls,rs)  = splitAt (e+ei) (map i2d is')
-         in
-         mk0 ls <> (if null rs then "" else singleton '.' <> fromString rs)
-        else
-         let
-          (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
-          d:ds' = map i2d (if ei > 0 then is' else 0:is')
-         in
-         singleton d <> (if null ds' then "" else singleton '.' <> fromString ds')
-
--- | Unsafe conversion for decimal digits.
-{-# INLINE i2d #-}
-i2d :: Int -> Char
-i2d (I# i#) = C# (chr# (ord# '0'# +# i#))
 
 ----------------------------------------------------------------------
 
