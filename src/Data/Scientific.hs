@@ -31,21 +31,23 @@ module Data.Scientific
 -- Imports
 ----------------------------------------------------------------------
 
-import           Control.Monad       (mplus)
-import           Control.DeepSeq     (NFData)
-import           Data.Char           (intToDigit, ord)
-import           Data.Data           (Data)
-import           Data.Function       (on)
-import           Data.Functor        ((<$>))
-import           Data.Hashable       (Hashable(..))
-import           Data.Ratio          ((%), numerator, denominator)
-import           Data.Typeable       (Typeable)
-import           Numeric             (floatToDigits)
-import           Text.Read           (readPrec)
+import           Control.Monad                (mplus)
+import           Control.DeepSeq              (NFData)
+import           Data.Char                    (intToDigit, ord)
+import           Data.Data                    (Data)
+import           Data.Function                (on)
+import           Data.Functor                 ((<$>))
+import           Data.Hashable                (Hashable(..))
+import           Data.Ratio                   ((%), numerator, denominator)
+import           Data.Typeable                (Typeable)
+import           Math.NumberTheory.Logarithms (integerLog10')
+import           Numeric                      (floatToDigits)
+import           Text.Read                    (readPrec)
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
 import qualified Text.ParserCombinators.ReadP    as ReadP
 import           Text.ParserCombinators.ReadP     ( ReadP )
 import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
+
 
 ----------------------------------------------------------------------
 -- Type
@@ -191,9 +193,59 @@ instance RealFrac Scientific where
                 in fromInteger $! if r > 0 then q + 1 else q
     {-# INLINE ceiling #-}
 
-    floor = whenFloating $ \c e ->
-              fromInteger (c `div` (10 ^ negate e))
+    floor = safeFloor
     {-# INLINE floor #-}
+
+-- | Safely floor a scientific value to an integral.
+-- @forall s. safeFloor s == floor s@
+--
+-- This function is safe in the sense that the amount of space used is
+-- bounded by the size of the target type.
+
+-- When the exponent is positive (we're dealing with an integer)
+-- whenFloating converts the coefficient to the desired integral type
+-- and multiplies it by the magnitude (10^e). Note that the magnitude
+-- is also represented in the target type which means that the space
+-- usage is bounded by the size of that type (8/16/32/64
+-- bits). Computing the magnitude could take a long time but it's easy
+-- to protect against that by using a timeout.
+
+-- When the exponent is negative we divide the Integer coefficient by
+-- the magnitude (10^(-e)) and convert the resulting Integer to the
+-- target integral type (note that 'div' truncates towards negative
+-- infinity which is required by 'floor').
+--
+-- Do note that the magnitude (which is an Integer) will consume lots
+-- of space if the exponent is a big negative number. If left
+-- unguarded this allows an attacker to supply a scientific number
+-- with a big negative exponent like 1e-1000000000 and crash the
+-- target system by filling up all memory.
+--
+-- We can immediately return 0 and avoid computing the magnitude when
+-- the exponent is smaller than than -log10c (the number of decimal
+-- digits in the coefficent). However, computing log10c is expensive
+-- so we only perform that computation when e is lower than -limit.
+--
+-- Note that this still allows an attacker to trigger the unsafe
+-- magnitude computation. However, he can only trigger it by supplying
+-- a coefficient consisting of more decimal digits than 10^(-e). It's
+-- easy to protect against this by limiting the amount of bytes read
+-- from an untrusted source.
+--
+-- Also note that log10c is only computed when the exponent is smaller
+-- than -limit.
+safeFloor :: Integral a => Scientific -> a
+safeFloor = whenFloating $ \c e ->
+              let limit = 20
+
+                  -- The number of decimal digits of the coefficient.
+                  log10c = integerLog10' (abs c)
+
+              in if e < (-limit) && e < (-log10c)
+                 then 0
+                 else fromInteger (c `div` (10^(-e)))
+{-# INLINE safeFloor #-}
+
 
 ----------------------------------------------------------------------
 -- Internal utilities
