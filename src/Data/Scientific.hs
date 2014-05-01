@@ -26,6 +26,9 @@ module Data.Scientific
     , toDecimalDigits
     ) where
 
+
+----------------------------------------------------------------------
+-- Imports
 ----------------------------------------------------------------------
 
 import           Control.Monad       (mplus)
@@ -45,6 +48,8 @@ import           Text.ParserCombinators.ReadP     ( ReadP )
 import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 
 ----------------------------------------------------------------------
+-- Type
+----------------------------------------------------------------------
 
 -- | An arbitrary-precision number represented using
 -- <http://en.wikipedia.org/wiki/Scientific_notation scientific notation>.
@@ -55,8 +60,11 @@ import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 -- A scientific number with 'coefficient' @c@ and 'base10Exponent' @e@
 -- corresponds to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@
 data Scientific = Scientific
-    { coefficient    ::                !Integer -- ^ The coefficient of a scientific number.
-    , base10Exponent :: {-# UNPACK #-} !Int     -- ^ The base-10 exponent of a scientific number.
+    { coefficient    ::                !Integer
+      -- ^ The coefficient of a scientific number.
+
+    , base10Exponent :: {-# UNPACK #-} !Int
+      -- ^ The base-10 exponent of a scientific number.
     } deriving (Typeable, Data)
 
 -- | @scientific c e@ constructs a scientific number with
@@ -65,71 +73,15 @@ scientific :: Integer -> Int -> Scientific
 scientific = Scientific
 {-# INLINE scientific #-}
 
+
+----------------------------------------------------------------------
+-- Instances
 ----------------------------------------------------------------------
 
 instance NFData Scientific
 
 instance Hashable Scientific where
     hashWithSalt salt = hashWithSalt salt . toRational
-
-instance Show Scientific where
-    show = formatScientific Generic Nothing
-
-instance Read Scientific where
-    readPrec = ReadPrec.lift scientificP
-
-scientificP :: ReadP Scientific
-scientificP = do
-  let positive = (('+' ==) <$> ReadP.satisfy isSign) `mplus` return True
-  pos <- positive
-
-  let step :: Num a => a -> Int -> a
-      step a digit = a * 10 + fromIntegral digit
-
-  n <- foldDigits step 0
-
-  let s = Scientific n 0
-      fractional = foldDigits (\(Scientific a e) digit -> scientific (step a digit) (e-1)) s
-
-  Scientific coeff expnt <- (ReadP.satisfy (== '.') >> fractional) `mplus` return s
-
-  let signedCoeff | pos       = coeff
-                  | otherwise = negate coeff
-
-      eP = do posE <- positive
-              e <- foldDigits step 0
-              if posE
-                then return e
-                else return $ negate e
-
-  (ReadP.satisfy isE >>
-           ((scientific signedCoeff . (expnt +)) <$> eP)) `mplus`
-     return (scientific signedCoeff    expnt)
-
-foldDigits :: (a -> Int -> a) -> a -> ReadP a
-foldDigits f z = ReadP.look >>= go z
-    where
-      go !a [] = return a
-      go !a (c:cs)
-          | isDecimal c = do
-              _ <- ReadP.get
-              let digit = ord c - 48
-              go (f a digit) cs
-          | otherwise = return a
-
-isDecimal :: Char -> Bool
-isDecimal c = c >= '0' && c <= '9'
-{-# INLINE isDecimal #-}
-
-isSign :: Char -> Bool
-isSign c = c == '-' || c == '+'
-{-# INLINE isSign #-}
-
-isE :: Char -> Bool
-isE c = c == 'e' || c == 'E'
-{-# INLINE isE #-}
-
-----------------------------------------------------------------------
 
 instance Eq Scientific where
     (==) = (==) `on` toRational
@@ -214,11 +166,6 @@ instance Fractional Scientific where
 
         d = denominator rational
 
-positivize :: (Ord a, Num a, Num b) => (a -> b) -> (a -> b)
-positivize f x | x < 0      = -(f (-x))
-               | otherwise =    f   x
-{-# INLINE positivize #-}
-
 instance RealFrac Scientific where
     properFraction (Scientific c e)
         | e < 0     = let (q, r) = c `quotRem` (10 ^ negate e)
@@ -249,6 +196,13 @@ instance RealFrac Scientific where
     {-# INLINE floor #-}
 
 ----------------------------------------------------------------------
+-- Internal utilities
+----------------------------------------------------------------------
+
+positivize :: (Ord a, Num a, Num b) => (a -> b) -> (a -> b)
+positivize f x | x < 0      = -(f (-x))
+               | otherwise =    f   x
+{-# INLINE positivize #-}
 
 whenFloating :: (Num a) => (Integer -> Int -> a) -> Scientific -> a
 whenFloating f (Scientific c e)
@@ -256,6 +210,9 @@ whenFloating f (Scientific c e)
     | otherwise = fromInteger c * 10 ^ e
 {-# INLINE whenFloating #-}
 
+
+----------------------------------------------------------------------
+-- Conversion
 ----------------------------------------------------------------------
 
 -- | Exact conversion from a 'RealFloat' into a 'Scientific' number.
@@ -274,6 +231,70 @@ fromFloatDigits rf
 
           go []     !c !n = scientific c (e - n)
           go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
+
+
+----------------------------------------------------------------------
+-- Parsing & Pretty Printing
+----------------------------------------------------------------------
+
+instance Show Scientific where
+    show = formatScientific Generic Nothing
+
+instance Read Scientific where
+    readPrec = ReadPrec.lift scientificP
+
+scientificP :: ReadP Scientific
+scientificP = do
+  let positive = (('+' ==) <$> ReadP.satisfy isSign) `mplus` return True
+  pos <- positive
+
+  let step :: Num a => a -> Int -> a
+      step a digit = a * 10 + fromIntegral digit
+
+  n <- foldDigits step 0
+
+  let s = Scientific n 0
+      fractional = foldDigits (\(Scientific a e) digit ->
+                                   scientific (step a digit) (e-1)) s
+
+  Scientific coeff expnt <- (ReadP.satisfy (== '.') >> fractional)
+                              `mplus` return s
+
+  let signedCoeff | pos       = coeff
+                  | otherwise = negate coeff
+
+      eP = do posE <- positive
+              e <- foldDigits step 0
+              if posE
+                then return e
+                else return $ negate e
+
+  (ReadP.satisfy isE >>
+           ((scientific signedCoeff . (expnt +)) <$> eP)) `mplus`
+     return (scientific signedCoeff    expnt)
+
+foldDigits :: (a -> Int -> a) -> a -> ReadP a
+foldDigits f z = ReadP.look >>= go z
+    where
+      go !a [] = return a
+      go !a (c:cs)
+          | isDecimal c = do
+              _ <- ReadP.get
+              let digit = ord c - 48
+              go (f a digit) cs
+          | otherwise = return a
+
+isDecimal :: Char -> Bool
+isDecimal c = c >= '0' && c <= '9'
+{-# INLINE isDecimal #-}
+
+isSign :: Char -> Bool
+isSign c = c == '-' || c == '+'
+{-# INLINE isSign #-}
+
+isE :: Char -> Bool
+isE c = c == 'e' || c == 'E'
+{-# INLINE isE #-}
 
 ----------------------------------------------------------------------
 
