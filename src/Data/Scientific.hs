@@ -200,20 +200,24 @@ instance Fractional Scientific where
     recip = fromRational . recip . toRational
     {-# INLINE recip #-}
 
-    fromRational rational
-        | numer < 0 = negate $ longDiv (negate numer) 0 0
-        | otherwise =          longDiv         numer  0 0
+    fromRational rational = positivize (longDiv 0 0) (numerator rational)
       where
-        numer = numerator   rational
-        denom = denominator rational
+        -- Divide the numerator by the denominator using long division.
+        longDiv :: Integer -> Int -> (Integer -> Scientific)
+        longDiv !c !e  0 = scientific c e
+        longDiv !c !e !n
+                          -- TODO: Use a logarithm here!
+            | n < d     = longDiv (c * 10) (e - 1) (n * 10)
+            | otherwise = longDiv (c + q)   e      r
+                            where
+                              (q, r) = n `quotRem` d
 
-        longDiv :: Integer -> Integer -> Int -> Scientific
-        longDiv  0 !c !e = scientific c e
-        longDiv !n !c !e
-            | n < denom  = longDiv (n*10) (c * 10) (e-1) -- TODO: Use a logarithm here!
-            | otherwise  = longDiv r      (c + q)   e
-          where
-            (q, r) = n `quotRem` denom
+        d = denominator rational
+
+positivize :: (Ord a, Num a, Num b) => (a -> b) -> (a -> b)
+positivize f x | x < 0      = -(f (-x))
+               | otherwise =    f   x
+{-# INLINE positivize #-}
 
 instance RealFrac Scientific where
     properFraction (Scientific c e)
@@ -254,15 +258,13 @@ whenFloating f (Scientific c e)
 
 ----------------------------------------------------------------------
 
--- | Efficient and exact conversion from a 'RealFloat' into a
--- 'Scientific' number.
+-- | Exact conversion from a 'RealFloat' into a 'Scientific' number.
 fromFloatDigits :: (RealFloat a) => a -> Scientific
 fromFloatDigits rf
       -- integers are way more efficient to convert via Rational.
       -- We do pay the cost of always converting to Rational first though.
     | denominator rat == 1 = fromInteger $ numerator rat
-    | rf < 0               = negate $ fromNonNegRealFloat $ negate rf
-    | otherwise            =          fromNonNegRealFloat          rf
+    | otherwise = positivize fromNonNegRealFloat rf
     where
       rat = toRational rf
 
