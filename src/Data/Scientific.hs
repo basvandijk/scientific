@@ -143,8 +143,8 @@ instance Num Scientific where
 
 instance Real Scientific where
     toRational (Scientific c e)
-      | e < 0     = c % (10 ^ negate e)
-      | otherwise = (c * 10 ^ e) % 1
+      | e < 0     =  c % (10 ^ (-e))
+      | otherwise = (c *  10 ^   e) % 1
     {-# INLINE toRational #-}
 
 -- | /WARNING:/ 'recip' and '/' will diverge when their outputs have
@@ -170,17 +170,17 @@ instance Fractional Scientific where
 
 instance RealFrac Scientific where
     properFraction (Scientific c e)
-        | e < 0     = let (q, r) = c `quotRem` (10 ^ negate e)
+        | e < 0     = let (q, r) = c `quotRem` (10 ^ (-e))
                       in (fromInteger q, scientific r e)
         | otherwise = (fromInteger c * 10 ^ e, 0)
     {-# INLINE properFraction #-}
 
     truncate = whenFloating $ \c e ->
-                 fromInteger $ c `quot` (10 ^ negate e)
+                 fromInteger $ c `quot` (10 ^ (-e))
     {-# INLINE truncate #-}
 
     round = whenFloating $ \c e ->
-      let m = c `quot` (10 ^ (negate e - 1))
+      let m = c `quot` (10 ^ ((-e) - 1))
           (n, r) = m `quotRem` 10
       in fromInteger $
            if c < 0
@@ -189,7 +189,7 @@ instance RealFrac Scientific where
     {-# INLINE round #-}
 
     ceiling = whenFloating $ \c e ->
-                let (q, r) = c `quotRem` (10 ^ negate e)
+                let (q, r) = c `quotRem` (10 ^ (-e))
                 in fromInteger $! if r > 0 then q + 1 else q
     {-# INLINE ceiling #-}
 
@@ -312,14 +312,14 @@ scientificP = do
   Scientific coeff expnt <- (ReadP.satisfy (== '.') >> fractional)
                               `mplus` return s
 
-  let signedCoeff | pos       = coeff
-                  | otherwise = negate coeff
+  let signedCoeff | pos       =   coeff
+                  | otherwise = (-coeff)
 
       eP = do posE <- positive
               e <- foldDigits step 0
               if posE
-                then return e
-                else return $ negate e
+                then return   e
+                else return (-e)
 
   (ReadP.satisfy isE >>
            ((scientific signedCoeff . (expnt +)) <$> eP)) `mplus`
