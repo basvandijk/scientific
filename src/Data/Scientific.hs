@@ -114,16 +114,16 @@ instance Num Scientific where
        | e1 < e2   = scientific (c1   + c2*l) e1
        | otherwise = scientific (c1*r + c2  ) e2
          where
-           l = 10 ^ (e2 - e1)
-           r = 10 ^ (e1 - e2)
+           l = magnitude (e2 - e1)
+           r = magnitude (e1 - e2)
     {-# INLINE (+) #-}
 
     Scientific c1 e1 - Scientific c2 e2
        | e1 < e2   = scientific (c1   - c2*l) e1
        | otherwise = scientific (c1*r - c2  ) e2
          where
-           l = 10 ^ (e2 - e1)
-           r = 10 ^ (e1 - e2)
+           l = magnitude (e2 - e1)
+           r = magnitude (e1 - e2)
     {-# INLINE (-) #-}
 
     Scientific c1 e1 * Scientific c2 e2 =
@@ -144,8 +144,8 @@ instance Num Scientific where
 
 instance Real Scientific where
     toRational (Scientific c e)
-      | e < 0     =  c % (10 ^ (-e))
-      | otherwise = (c *  10 ^   e) % 1
+      | e < 0     =  c % magnitude (-e)
+      | otherwise = (c * magnitude   e) % 1
     {-# INLINE toRational #-}
 
 -- | /WARNING:/ 'recip' and '/' will diverge when their outputs have
@@ -180,16 +180,16 @@ instance RealFrac Scientific where
     properFraction s@(Scientific c e)
         | e < 0     = if dangerouslySmall c e
                       then (0, s)
-                      else let (q, r) = c `quotRem` (10 ^ (-e))
+                      else let (q, r) = c `quotRem` magnitude (-e)
                            in (fromInteger q, scientific r e)
-        | otherwise = (fromInteger c * 10 ^ e, 0)
+        | otherwise = (fromInteger c * magnitude e, 0)
     {-# INLINE properFraction #-}
 
     -- | @'truncate' s@ returns the integer nearest @s@ between zero and @s@
     truncate = whenFloating $ \c e ->
                  if dangerouslySmall c e
                  then 0
-                 else fromInteger $ c `quot` (10 ^ (-e))
+                 else fromInteger $ c `quot` magnitude (-e)
     {-# INLINE truncate #-}
 
     -- | @'round' s@ returns the nearest integer to @s@;
@@ -197,7 +197,7 @@ instance RealFrac Scientific where
     round = whenFloating $ \c e ->
               if dangerouslySmall c e
               then 0
-              else let (q, r) = c `quotRem` (10 ^ (-e))
+              else let (q, r) = c `quotRem` magnitude (-e)
                        n = fromInteger q
                        m = if r < 0 then n - 1 else n + 1
                        f = scientific r e
@@ -214,7 +214,7 @@ instance RealFrac Scientific where
                 then if c < 0
                      then 0
                      else 1
-                else let (q, r) = c `quotRem` (10 ^ (-e))
+                else let (q, r) = c `quotRem` magnitude (-e)
                      in fromInteger $! if r > 0 then q + 1 else q
     {-# INLINE ceiling #-}
 
@@ -222,13 +222,18 @@ instance RealFrac Scientific where
     floor = whenFloating $ \c e ->
               if dangerouslySmall c e
               then 0
-              else fromInteger (c `div` (10 ^ (-e)))
+              else fromInteger (c `div` magnitude (-e))
     {-# INLINE floor #-}
 
 
 ----------------------------------------------------------------------
 -- Internal utilities
 ----------------------------------------------------------------------
+
+-- @magnitude e == 10 ^ e@
+magnitude :: (Num a) => Int -> a
+magnitude e = 10 ^ e
+{-# INLINE magnitude #-}
 
 -- | A scientific value with a big negative exponent (e < (-limit)) is
 -- considered dangerously small because if you evaluate its Integer
@@ -252,7 +257,7 @@ positivize f x | x < 0      = -(f (-x))
 whenFloating :: (Num a) => (Integer -> Int -> a) -> Scientific -> a
 whenFloating f (Scientific c e)
     | e < 0     = f c e
-    | otherwise = fromInteger c * 10 ^ e
+    | otherwise = fromInteger c * magnitude e
 {-# INLINE whenFloating #-}
 
 
