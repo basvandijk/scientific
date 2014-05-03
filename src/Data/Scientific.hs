@@ -22,6 +22,7 @@ module Data.Scientific
 
       -- * Pretty printing
     , formatScientific
+    , FPFormat(..)
 
     , toDecimalDigits
     ) where
@@ -256,7 +257,7 @@ whenFloating f (Scientific c e)
 
 
 ----------------------------------------------------------------------
--- Conversion
+-- Conversions
 ----------------------------------------------------------------------
 
 -- | Exact conversion from a 'RealFloat' into a 'Scientific' number.
@@ -278,11 +279,8 @@ fromFloatDigits rf
 
 
 ----------------------------------------------------------------------
--- Parsing & Pretty Printing
+-- Parsing
 ----------------------------------------------------------------------
-
-instance Show Scientific where
-    show = formatScientific Generic Nothing
 
 instance Read Scientific where
     readPrec = ReadPrec.lift scientificP
@@ -340,40 +338,13 @@ isE :: Char -> Bool
 isE c = c == 'e' || c == 'E'
 {-# INLINE isE #-}
 
-----------------------------------------------------------------------
-
--- | Similar to 'floatToDigits', @toDecimalDigits@ takes a
--- non-negative 'Scientific' number, and returns a list of digits and
--- a base-10 exponent. In particular, if @x>=0@, and
---
--- > toDecimalDigits x = ([d1,d2,...,dn], e)
---
--- then
---
---      (1) @n >= 1@
---
---      (2) @x = 0.d1d2...dn * (10^^e)@
---
---      (3) @0 <= di <= 9@
-toDecimalDigits :: Scientific -> ([Int], Int)
-toDecimalDigits (Scientific 0 _) = ([0], 0)
-toDecimalDigits (Scientific c e) = (is, n + e)
-  where
-    (is, n) = reverseAndLength $ digits c
-
-    digits :: Integer -> [Int]
-    digits 0 = []
-    digits i = fromIntegral r : digits q
-      where
-        (q, r) = i `quotRem` 10
-
-    reverseAndLength :: [a] -> ([a], Int)
-    reverseAndLength l = rev l [] 0
-      where
-        rev []     a !m = (a, m)
-        rev (x:xs) a !m = rev xs (x:a) (m+1)
 
 ----------------------------------------------------------------------
+-- Pretty Printing
+----------------------------------------------------------------------
+
+instance Show Scientific where
+    show = formatScientific Generic Nothing
 
 -- | Like 'show' but provides rendering options.
 formatScientific :: FPFormat
@@ -461,3 +432,36 @@ roundTo d is =
       where
        (c,ds) = f (n-1) (even i) xs
        i'     = c + i
+
+----------------------------------------------------------------------
+
+-- | Similar to 'floatToDigits', @toDecimalDigits@ takes a
+-- non-negative 'Scientific' number, and returns a list of digits and
+-- a base-10 exponent. In particular, if @x>=0@, and
+--
+-- > toDecimalDigits x = ([d1,d2,...,dn], e)
+--
+-- then
+--
+--      (1) @n >= 1@
+--
+--      (2) @x = 0.d1d2...dn * (10^^e)@
+--
+--      (3) @0 <= di <= 9@
+toDecimalDigits :: Scientific -> ([Int], Int)
+toDecimalDigits (Scientific 0 _) = ([0], 0)
+toDecimalDigits (Scientific c e) = (is, n + e)
+  where
+    (is, n) = reverseAndLength $ digits c
+
+    digits :: Integer -> [Int]
+    digits 0 = []
+    digits i = fromIntegral r : digits q
+      where
+        (q, r) = i `quotRem` 10
+
+    reverseAndLength :: [a] -> ([a], Int)
+    reverseAndLength l = rev l [] 0
+      where
+        rev []     a !m = (a, m)
+        rev (x:xs) a !m = rev xs (x:a) (m+1)
