@@ -169,87 +169,79 @@ instance Fractional Scientific where
         d = denominator rational
 
 instance RealFrac Scientific where
-    properFraction (Scientific c e)
-        | e < 0     = let (q, r) = c `quotRem` (10 ^ (-e))
-                      in (fromInteger q, scientific r e)
+    -- | The function 'properFraction' takes a Scientific number @s@
+    -- and returns a pair @(n,f)@ such that @s = n+f@, and:
+    --
+    -- * @n@ is an integral number with the same sign as @s@; and
+    --
+    -- * @f@ is a fraction with the same type and sign as @s@,
+    --   and with absolute value less than @1@.
+    properFraction s@(Scientific c e)
+        | e < 0     = if dangerouslySmall c e
+                      then (0, s)
+                      else let (q, r) = c `quotRem` (10 ^ (-e))
+                           in (fromInteger q, scientific r e)
         | otherwise = (fromInteger c * 10 ^ e, 0)
     {-# INLINE properFraction #-}
 
+    -- | @'truncate' s@ returns the integer nearest @s@ between zero and @s@
     truncate = whenFloating $ \c e ->
-                 fromInteger $ c `quot` (10 ^ (-e))
+                 if dangerouslySmall c e
+                 then 0
+                 else fromInteger $ c `quot` (10 ^ (-e))
     {-# INLINE truncate #-}
 
+    -- | @'round' s@ returns the nearest integer to @s@;
+    --   the even integer if @s@ is equidistant between two integers
     round = whenFloating $ \c e ->
-      let m = c `quot` (10 ^ ((-e) - 1))
-          (n, r) = m `quotRem` 10
-      in fromInteger $
-           if c < 0
-           then if r < (-5) || (r == (-5) && odd  n) then n-1 else n
-           else if r <   5  || (r ==   5  && even n) then n   else n+1
+              if dangerouslySmall c e
+              then 0
+              else let (q, r) = c `quotRem` (10 ^ (-e))
+                       n = fromInteger q
+                       m = if r < 0 then n - 1 else n + 1
+                       f = scientific r e
+                   in case signum $ coefficient $ abs f - 0.5 of
+                        -1 -> n
+                        0  -> if even n then n else m
+                        1  -> m
+                        _  -> error "round default defn: Bad value"
     {-# INLINE round #-}
 
+    -- | @'ceiling' s@ returns the least integer not less than @s@
     ceiling = whenFloating $ \c e ->
-                let (q, r) = c `quotRem` (10 ^ (-e))
-                in fromInteger $! if r > 0 then q + 1 else q
+                if dangerouslySmall c e
+                then if c < 0
+                     then 0
+                     else 1
+                else let (q, r) = c `quotRem` (10 ^ (-e))
+                     in fromInteger $! if r > 0 then q + 1 else q
     {-# INLINE ceiling #-}
 
-    floor = safeFloor
+    -- | @'floor' s@ returns the greatest integer not greater than @s@
+    floor = whenFloating $ \c e ->
+              if dangerouslySmall c e
+              then 0
+              else fromInteger (c `div` (10 ^ (-e)))
     {-# INLINE floor #-}
-
--- | Safely floor a scientific value to an integral.
--- @forall s. safeFloor s == floor s@
---
--- This function is safe in the sense that the amount of space used is
--- bounded by the size of the target type.
-
--- When the exponent is positive (we're dealing with an integer)
--- whenFloating converts the coefficient to the desired integral type
--- and multiplies it by the magnitude (10^e). Note that the magnitude
--- is also represented in the target type which means that the space
--- usage is bounded by the size of that type (8/16/32/64
--- bits). Computing the magnitude could take a long time but it's easy
--- to protect against that by using a timeout.
-
--- When the exponent is negative we divide the Integer coefficient by
--- the magnitude (10^(-e)) and convert the resulting Integer to the
--- target integral type (note that 'div' truncates towards negative
--- infinity which is required by 'floor').
---
--- Do note that the magnitude (which is an Integer) will consume lots
--- of space if the exponent is a big negative number. If left
--- unguarded this allows an attacker to supply a scientific number
--- with a big negative exponent like 1e-1000000000 and crash the
--- target system by filling up all memory.
---
--- We can immediately return 0 and avoid computing the magnitude when
--- the exponent is smaller than than -log10c (the number of decimal
--- digits in the coefficent). However, computing log10c is expensive
--- so we only perform that computation when e is lower than -limit.
---
--- Note that this still allows an attacker to trigger the unsafe
--- magnitude computation. However, he can only trigger it by supplying
--- a coefficient consisting of more decimal digits than 10^(-e). It's
--- easy to protect against this by limiting the amount of bytes read
--- from an untrusted source.
---
--- Also note that log10c is only computed when the exponent is smaller
--- than -limit.
-safeFloor :: Integral a => Scientific -> a
-safeFloor = whenFloating $ \c e ->
-              let limit = 20
-
-                  -- The number of decimal digits of the coefficient.
-                  log10c = integerLog10' (abs c)
-
-              in if e < (-limit) && e < (-log10c)
-                 then 0
-                 else fromInteger (c `div` (10^(-e)))
-{-# INLINE safeFloor #-}
 
 
 ----------------------------------------------------------------------
 -- Internal utilities
 ----------------------------------------------------------------------
+
+-- | A scientific value with a big negative exponent (e < (-limit)) is
+-- considered dangerously small because if you evaluate its Integer
+-- magnitude (10 ^ (-e)) it could take up a lot of space and
+-- potentially crash your program.
+--
+-- However when the number of decimal digits in the coefficient is
+-- larger than -e an attacker ...
+dangerouslySmall :: Integer -> Int -> Bool
+dangerouslySmall c e = e < (-limit) && e < (-integerLog10' (abs c)) - 1
+    where
+      limit :: Int
+      limit = 20
+{-# INLINE dangerouslySmall #-}
 
 positivize :: (Ord a, Num a, Num b) => (a -> b) -> (a -> b)
 positivize f x | x < 0      = -(f (-x))
