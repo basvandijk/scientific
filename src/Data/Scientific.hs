@@ -34,6 +34,7 @@ module Data.Scientific
 
 import           Control.Monad                (mplus)
 import           Control.DeepSeq              (NFData)
+import           Data.Array                   (Array, listArray, (!))
 import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
 import           Data.Function                (on)
@@ -185,7 +186,8 @@ instance RealFrac Scientific where
         | otherwise = (fromInteger c * magnitude e, 0)
     {-# INLINE properFraction #-}
 
-    -- | @'truncate' s@ returns the integer nearest @s@ between zero and @s@
+    -- | @'truncate' s@ returns the integer nearest @s@
+    -- between zero and @s@
     truncate = whenFloating $ \c e ->
                  if dangerouslySmall c e
                  then 0
@@ -227,13 +229,26 @@ instance RealFrac Scientific where
 
 
 ----------------------------------------------------------------------
--- Internal utilities
+-- Exponentiation with a cache for the most common numbers.
 ----------------------------------------------------------------------
 
--- @magnitude e == 10 ^ e@
+maxExpt :: Int
+maxExpt = 1100
+
+expts10 :: Array Int Integer
+expts10 = listArray (0, maxExpt) $ iterate (*10) 1
+
+-- | @magnitude e == 10 ^ e@
 magnitude :: (Num a) => Int -> a
-magnitude e = 10 ^ e
+magnitude e | e <= maxExpt = fromInteger (expts10 ! e)
+            | otherwise    = fromInteger (expts10 ! maxExpt)
+                             * 10 ^ (e - maxExpt)
 {-# INLINE magnitude #-}
+
+
+----------------------------------------------------------------------
+-- Internal utilities
+----------------------------------------------------------------------
 
 -- | A scientific value with a big negative exponent (e < (-limit)) is
 -- considered dangerously small because if you evaluate its Integer
