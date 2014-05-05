@@ -240,9 +240,10 @@ expts10 = listArray (0, maxExpt) $ iterate (*10) 1
 
 -- | @magnitude e == 10 ^ e@
 magnitude :: (Num a) => Int -> a
-magnitude e | e <= maxExpt = fromInteger (expts10 ! e)
-            | otherwise    = fromInteger (expts10 ! maxExpt)
-                             * 10 ^ (e - maxExpt)
+magnitude e | e <= maxExpt = cachedPow10 e
+            | otherwise    = cachedPow10 maxExpt * 10 ^ (e - maxExpt)
+    where
+      cachedPow10 p = fromInteger (expts10 ! p)
 {-# INLINE magnitude #-}
 
 
