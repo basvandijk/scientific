@@ -223,7 +223,9 @@ instance RealFrac Scientific where
     -- | @'floor' s@ returns the greatest integer not greater than @s@
     floor = whenFloating $ \c e ->
               if dangerouslySmall c e
-              then 0
+              then if c < 0
+                   then -1
+                   else 0
               else fromInteger (c `div` magnitude (-e))
     {-# INLINE floor #-}
 
