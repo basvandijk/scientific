@@ -213,11 +213,11 @@ instance RealFrac Scientific where
     -- | @'ceiling' s@ returns the least integer not less than @s@
     ceiling = whenFloating $ \c e ->
                 if dangerouslySmall c e
-                then if c > 0
-                     then 1
-                     else 0
+                then if c <= 0
+                     then 0
+                     else 1
                 else let (q, r) = c `quotRem` magnitude (-e)
-                     in fromInteger $! if r > 0 then q + 1 else q
+                     in fromInteger $! if r <= 0 then q else q + 1
     {-# INLINE ceiling #-}
 
     -- | @'floor' s@ returns the greatest integer not greater than @s@
