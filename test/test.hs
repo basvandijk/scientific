@@ -1,30 +1,41 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main where
 
-import Control.Monad
-import Test.Tasty
-import Test.Tasty.SmallCheck (testProperty)
-import Test.SmallCheck
-import Data.Scientific as Scientific
-import Test.SmallCheck.Series -- (Serial, series, cons2)
-import qualified Data.Text.Lazy as TL (unpack)
-import qualified Data.Text.Lazy.Builder as TLB (toLazyText)
-import qualified Data.ByteString.Builder as B
-import qualified Data.ByteString.Lazy.Char8 as BLC8
-import Data.ByteString.Builder.Scientific as B
-import Data.Text.Lazy.Builder.Scientific  as T
+import           Control.Applicative
+import           Control.Monad
+import           Data.Scientific                    as Scientific
+import           Test.Tasty
+import qualified Test.SmallCheck                    as SC
+import qualified Test.SmallCheck.Series             as SC
+import qualified Test.Tasty.SmallCheck              as SC  (testProperty)
+import qualified Test.QuickCheck                    as QC
+import qualified Test.Tasty.QuickCheck              as QC  (testProperty)
+import qualified Data.Text.Lazy                     as TL  (unpack)
+import qualified Data.Text.Lazy.Builder             as TLB (toLazyText)
+import qualified Data.ByteString.Builder            as B
+import qualified Data.ByteString.Lazy.Char8         as BLC8
+import qualified Data.ByteString.Builder.Scientific as B
+import qualified Data.Text.Lazy.Builder.Scientific  as T
 
 main :: IO ()
 main = defaultMain $ testGroup "scientific"
   [ testGroup "Formatting"
     [ testProperty "read . show == id" $ \s -> read (show s) === s
 
-    , testProperty "toDecimalDigits_laws"
-                    toDecimalDigits_laws
+    , testGroup "toDecimalDigits_laws"
+      [ SC.testProperty "smallcheck" $ SC.over nonNegativeScientificSeries
+                                         toDecimalDigits_laws
+      , QC.testProperty "quickcheck" $ QC.forAll nonNegativeScientificGen
+                                         toDecimalDigits_laws
+      ]
+
     , testGroup "Builder"
       [ testProperty "Text" $ \s ->
           formatScientific B.Generic Nothing s ==
@@ -34,6 +45,14 @@ main = defaultMain $ testGroup "scientific"
           formatScientific B.Generic Nothing s ==
           BLC8.unpack (B.toLazyByteString $ B.formatScientificBuilder B.Generic Nothing s)
       ]
+
+    , testProperty "formatScientific_fromRealFloat" $ \(d::Double) ->
+        formatScientific B.Generic Nothing (Scientific.fromRealFloat d) ==
+        show d
+
+    -- , testProperty "formatScientific_realToFrac" $ \(d::Double) ->
+    --     formatScientific B.Generic Nothing (realToFrac d :: Scientific) ==
+    --     show d
     ]
 
   , testGroup "Num"
@@ -60,8 +79,12 @@ main = defaultMain $ testGroup "scientific"
     , testProperty "+ and negate" $ \x -> x + negate x === 0
     , testProperty "- and negate" $ \x -> x - negate x === x + x
 
-    , testProperty "abs . negate == id" $ over nonNegativeScientifics $ \x ->
-                                            abs (negate x) === x
+    , testGroup "abs . negate == id"
+      [ SC.testProperty "smallcheck" $ SC.over nonNegativeScientificSeries $ \x ->
+                                         abs (negate x) === x
+      , QC.testProperty "quickcheck" $ QC.forAll nonNegativeScientificGen $ \x ->
+                                         abs (negate x) === x
+      ]
     ]
 
   , testGroup "Real"
@@ -98,10 +121,38 @@ main = defaultMain $ testGroup "scientific"
     ]
 
   , testGroup "Conversions"
-    [ testProperty "fromRealFloat" $ \s ->
-        Scientific.fromFloatDigits (realToFrac s :: Double) === s
+    [ testGroup "Float"  $ conversionsProperties (undefined :: Float)
+    , testGroup "Double" $ conversionsProperties (undefined :: Double)
     ]
   ]
+
+conversionsProperties
+    :: forall a. (RealFloat a, QC.Arbitrary a, SC.Serial IO a, Show a)
+    => a -> [TestTree]
+conversionsProperties _ =
+  [
+    -- testProperty "fromRealFloat_1" $ \(d :: a) ->
+    --   Scientific.fromRealFloat d === realToFrac d
+
+    -- testProperty "fromRealFloat_2" $ \(s :: Scientific) ->
+    --   Scientific.fromRealFloat (realToFrac s :: a) == s
+
+    testProperty "toRealFloat" $ \(d :: a) ->
+      (Scientific.toRealFloat . realToFrac) d == d
+
+  , testProperty "toRealFloat . fromRealFloat == id" $ \(d :: a) ->
+      (Scientific.toRealFloat . Scientific.fromRealFloat) d == d
+
+  -- , testProperty "fromRealFloat . toRealFloat == id" $ \(s :: Scientific) ->
+  --     Scientific.fromRealFloat (Scientific.toRealFloat s :: a) == s
+  ]
+
+testProperty :: (SC.Testable IO test, QC.Testable test)
+             => TestName -> test -> TestTree
+testProperty n test = testGroup n
+                      [ SC.testProperty "smallcheck" test
+                      , QC.testProperty "quickcheck" test
+                      ]
 
 -- | ('==') specialized to 'Scientific' so we don't have to put type
 -- signatures everywhere.
@@ -115,8 +166,8 @@ bin op a b = toRational (a `op` b) == toRational a `op` toRational b
 unary :: (forall a. Num a => a -> a) -> Scientific -> Bool
 unary op a = toRational (op a) == op (toRational a)
 
-toDecimalDigits_laws :: (Monad m) => Property m
-toDecimalDigits_laws = over nonNegativeScientifics $ \x ->
+toDecimalDigits_laws :: Scientific -> Bool
+toDecimalDigits_laws x =
   let (ds, e) = Scientific.toDecimalDigits x
 
       rule1 = length ds >= 1
@@ -162,12 +213,29 @@ roundDefault x = let (n,r) = properFraction x
                       _  -> error "round default defn: Bad value"
 
 ----------------------------------------------------------------------
+-- SmallCheck instances
+----------------------------------------------------------------------
 
-instance (Monad m) => Serial m Scientific where
+instance (Monad m) => SC.Serial m Scientific where
     series = scientifics
 
-scientifics :: (Monad m) => Series m Scientific
-scientifics = cons2 scientific
+scientifics :: (Monad m) => SC.Series m Scientific
+scientifics = SC.cons2 scientific
 
-nonNegativeScientifics :: (Monad m) => Series m Scientific
-nonNegativeScientifics = liftM getNonNegative series
+nonNegativeScientificSeries :: (Monad m) => SC.Series m Scientific
+nonNegativeScientificSeries = liftM SC.getNonNegative SC.series
+
+
+----------------------------------------------------------------------
+-- QuickCheck instances
+----------------------------------------------------------------------
+
+instance QC.Arbitrary Scientific where
+    arbitrary = scientific <$> QC.arbitrary <*> QC.arbitrary
+
+    shrink s = zipWith scientific (QC.shrink $ Scientific.coefficient s)
+                                  (QC.shrink $ Scientific.base10Exponent s)
+
+nonNegativeScientificGen :: QC.Gen Scientific
+nonNegativeScientificGen = scientific <$> (QC.getNonNegative <$> QC.arbitrary)
+                                      <*> QC.arbitrary

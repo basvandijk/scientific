@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, BangPatterns #-}
+{-# LANGUAGE DeriveDataTypeable, BangPatterns, ScopedTypeVariables #-}
 
 -- |
 -- Module      :  Data.Scientific
@@ -12,13 +12,16 @@
 module Data.Scientific
     ( Scientific
 
+      -- * Construction
     , scientific
 
+      -- * Projections
     , coefficient
     , base10Exponent
 
       -- * Conversions
-    , fromFloatDigits
+    , fromRealFloat
+    , toRealFloat
 
       -- * Pretty printing
     , formatScientific
@@ -253,13 +256,6 @@ magnitude e | e <= maxExpt = cachedPow10 e
 -- Internal utilities
 ----------------------------------------------------------------------
 
--- | A scientific value with a big negative exponent (e < (-limit)) is
--- considered dangerously small because if you evaluate its Integer
--- magnitude (10 ^ (-e)) it could take up a lot of space and
--- potentially crash your program.
---
--- However when the number of decimal digits in the coefficient is
--- larger than -e an attacker ...
 dangerouslySmall :: Integer -> Int -> Bool
 dangerouslySmall c e = e < (-limit) && e < (-integerLog10' (abs c)) - 1
     where
@@ -283,22 +279,43 @@ whenFloating f (Scientific c e)
 -- Conversions
 ----------------------------------------------------------------------
 
--- | Exact conversion from a 'RealFloat' into a 'Scientific' number.
-fromFloatDigits :: (RealFloat a) => a -> Scientific
-fromFloatDigits rf
-      -- integers are way more efficient to convert via Rational.
-      -- We do pay the cost of always converting to Rational first though.
-    | denominator rat == 1 = fromInteger $ numerator rat
-    | otherwise = positivize fromNonNegRealFloat rf
+-- | Exact conversion from a 'RealFloat' (like a 'Double' or 'Float')
+-- into a 'Scientific' number.
+--
+-- This function uses 'floatToDigits' internally.
+fromRealFloat :: (RealFloat a) => a -> Scientific
+fromRealFloat = positivize fromNonNegRealFloat
     where
-      rat = toRational rf
-
       fromNonNegRealFloat r = go digits 0 0
         where
           (digits, e) = floatToDigits 10 r
 
           go []     !c !n = scientific c (e - n)
           go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
+
+-- | Convert a 'Scientific' number into a 'RealFloat' (like a 'Double'
+-- or a 'Float').
+toRealFloat :: forall a. (RealFloat a) => Scientific -> a
+toRealFloat s@(Scientific c e)
+    | e >  hiLimit                    = 1/0 -- Infinity
+    | e <  loLimit && e + d < loLimit = zero
+    | otherwise                       = realToFrac s
+  where
+    hiLimit = ceiling (fromIntegral hi     * log10Radix)
+    loLimit = floor   (fromIntegral lo     * log10Radix) -
+              ceiling (fromIntegral digits * log10Radix)
+
+    log10Radix :: Double
+    log10Radix = logBase 10 $ fromInteger radix
+
+    radix    = floatRadix  (undefined :: a)
+    digits   = floatDigits (undefined :: a)
+    (lo, hi) = floatRange  (undefined :: a)
+
+    d = integerLog10' (abs c)
+
+    zero | c < 0     = negate 0
+         | otherwise =        0
 
 
 ----------------------------------------------------------------------
