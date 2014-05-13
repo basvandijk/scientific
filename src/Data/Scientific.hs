@@ -407,8 +407,8 @@ fromFloatDigits = positivize fromNonNegRealFloat
 -- scientific numbers coming from an untrusted source.
 toRealFloat :: forall a. (RealFloat a) => Scientific -> a
 toRealFloat s@(Scientific c e)
-    | e >  hiLimit                    = 1/0 -- Infinity
-    | e <  loLimit && e + d < loLimit = zero
+    | e >  hiLimit                    = sign (1/0) -- Infinity
+    | e <  loLimit && e + d < loLimit = sign 0
     | otherwise                       = realToFrac s
   where
     hiLimit = ceiling (fromIntegral hi     * log10Radix)
@@ -424,8 +424,8 @@ toRealFloat s@(Scientific c e)
 
     d = integerLog10' (abs c)
 
-    zero | c < 0     = negate 0
-         | otherwise =        0
+    sign x | c < 0     = -x
+           | otherwise =  x
 
 
 ----------------------------------------------------------------------
