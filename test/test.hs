@@ -24,17 +24,20 @@ import qualified Data.ByteString.Lazy.Char8         as BLC8
 import qualified Data.ByteString.Builder.Scientific as B
 import qualified Data.Text.Lazy.Builder.Scientific  as T
 
+
 main :: IO ()
 main = defaultMain $ testGroup "scientific"
-  [ testGroup "Formatting"
+  [ smallQuick "mod c 10 /= 0"
+      (\s -> s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+      (\s -> s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+
+  , testGroup "Formatting"
     [ testProperty "read . show == id" $ \s -> read (show s) === s
 
-    , testGroup "toDecimalDigits_laws"
-      [ SC.testProperty "smallcheck" $ SC.over nonNegativeScientificSeries
-                                         toDecimalDigits_laws
-      , QC.testProperty "quickcheck" $ QC.forAll nonNegativeScientificGen
-                                         toDecimalDigits_laws
-      ]
+    , smallQuick "toDecimalDigits_laws"
+        (SC.over   nonNegativeScientificSeries toDecimalDigits_laws)
+        (QC.forAll nonNegativeScientificGen    toDecimalDigits_laws)
+
 
     , testGroup "Builder"
       [ testProperty "Text" $ \s ->
@@ -79,12 +82,9 @@ main = defaultMain $ testGroup "scientific"
     , testProperty "+ and negate" $ \x -> x + negate x === 0
     , testProperty "- and negate" $ \x -> x - negate x === x + x
 
-    , testGroup "abs . negate == id"
-      [ SC.testProperty "smallcheck" $ SC.over nonNegativeScientificSeries $ \x ->
-                                         abs (negate x) === x
-      , QC.testProperty "quickcheck" $ QC.forAll nonNegativeScientificGen $ \x ->
-                                         abs (negate x) === x
-      ]
+    , smallQuick "abs . negate == id"
+        (SC.over   nonNegativeScientificSeries $ \x -> abs (negate x) === x)
+        (QC.forAll nonNegativeScientificGen    $ \x -> abs (negate x) === x)
     ]
 
   , testGroup "Real"
@@ -149,10 +149,14 @@ conversionsProperties _ =
 
 testProperty :: (SC.Testable IO test, QC.Testable test)
              => TestName -> test -> TestTree
-testProperty n test = testGroup n
-                      [ SC.testProperty "smallcheck" test
-                      , QC.testProperty "quickcheck" test
-                      ]
+testProperty n test = smallQuick n test test
+
+smallQuick :: (SC.Testable IO smallCheck, QC.Testable quickCheck)
+             => TestName -> smallCheck -> quickCheck -> TestTree
+smallQuick n sc qc = testGroup n
+                     [ SC.testProperty "smallcheck" sc
+                     , QC.testProperty "quickcheck" qc
+                     ]
 
 -- | ('==') specialized to 'Scientific' so we don't have to put type
 -- signatures everywhere.

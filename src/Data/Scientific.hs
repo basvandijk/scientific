@@ -74,11 +74,19 @@ data Scientific = Scientific
       -- ^ The base-10 exponent of a scientific number.
     } deriving (Typeable, Data)
 
--- | @scientific c e@ constructs a scientific number with
--- 'coefficient' @c@ and 'base10Exponent' @e@.
+-- | @scientific c e@ constructs a scientific number which corresponds
+-- to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@.
 scientific :: Integer -> Int -> Scientific
-scientific = Scientific
+scientific c !e
+    | c > 0     = normalize c e
+    | c == 0    = Scientific 0 0
+    | otherwise = -(normalize (-c) e)
 {-# INLINE scientific #-}
+
+normalize :: Integer -> Int -> Scientific
+normalize c !e = case quotRem c 10 of
+                   (q, 0) -> normalize q (e+1)
+                   _      -> Scientific c e
 
 
 ----------------------------------------------------------------------
@@ -134,13 +142,13 @@ instance Num Scientific where
         scientific (c1 * c2) (e1 + e2)
     {-# INLINE (*) #-}
 
-    abs (Scientific c e) = scientific (abs c) e
+    abs (Scientific c e) = Scientific (abs c) e
     {-# INLINE abs #-}
 
-    negate (Scientific c e) = scientific (negate c) e
+    negate (Scientific c e) = Scientific (negate c) e
     {-# INLINE negate #-}
 
-    signum (Scientific c _) = scientific (signum c) 0
+    signum (Scientific c _) = Scientific (signum c) 0
     {-# INLINE signum #-}
 
     fromInteger i = scientific i 0
@@ -290,7 +298,7 @@ fromRealFloat = positivize fromNonNegRealFloat
         where
           (digits, e) = floatToDigits 10 r
 
-          go []     !c !n = scientific c (e - n)
+          go []     !c !n = Scientific c (e - n)
           go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
 
 -- | Convert a 'Scientific' number into a 'RealFloat' (like a 'Double'
@@ -325,6 +333,9 @@ toRealFloat s@(Scientific c e)
 instance Read Scientific where
     readPrec = ReadPrec.lift scientificP
 
+-- A strict pair
+data SP = SP !Integer {-# UNPACK #-}!Int
+
 scientificP :: ReadP Scientific
 scientificP = do
   let positive = (('+' ==) <$> ReadP.satisfy isSign) `mplus` return True
@@ -332,15 +343,16 @@ scientificP = do
 
   let step :: Num a => a -> Int -> a
       step a digit = a * 10 + fromIntegral digit
+      {-# INLINE step #-}
 
   n <- foldDigits step 0
 
-  let s = Scientific n 0
-      fractional = foldDigits (\(Scientific a e) digit ->
-                                   scientific (step a digit) (e-1)) s
+  let s = SP n 0
+      fractional = foldDigits (\(SP a e) digit ->
+                                 SP (step a digit) (e-1)) s
 
-  Scientific coeff expnt <- (ReadP.satisfy (== '.') >> fractional)
-                              `mplus` return s
+  SP coeff expnt <- (ReadP.satisfy (== '.') >> fractional)
+                      `mplus` return s
 
   let signedCoeff | pos       =   coeff
                   | otherwise = (-coeff)
