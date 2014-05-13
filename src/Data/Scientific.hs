@@ -20,7 +20,7 @@ module Data.Scientific
     , base10Exponent
 
       -- * Conversions
-    , fromRealFloat
+    , fromFloatDigits
     , toRealFloat
 
       -- * Pretty printing
@@ -46,7 +46,7 @@ import           Data.Hashable                (Hashable(..))
 import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
 import           Math.NumberTheory.Logarithms (integerLog10')
-import           Numeric                      (floatToDigits)
+import qualified Numeric                      (floatToDigits)
 import           Text.Read                    (readPrec)
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
 import qualified Text.ParserCombinators.ReadP    as ReadP
@@ -287,22 +287,37 @@ whenFloating f (Scientific c e)
 -- Conversions
 ----------------------------------------------------------------------
 
--- | Exact conversion from a 'RealFloat' (like a 'Double' or 'Float')
--- into a 'Scientific' number.
+-- | Convert a 'RealFloat' (like a 'Double' or 'Float') into a
+-- 'Scientific' number.
 --
--- This function uses 'floatToDigits' internally.
-fromRealFloat :: (RealFloat a) => a -> Scientific
-fromRealFloat = positivize fromNonNegRealFloat
+-- Note that this function uses 'Numeric.floatToDigits' to compute the
+-- digits and exponent of the 'RealFloat' number. Be aware that the
+-- algorithm used in 'Numeric.floatToDigits' doesn't work as expected
+-- for some numbers, e.g. as a @1e23 :: 'Double'@ is converted to
+-- @9.9999999999999991611392e22@, and that value is shown as
+-- @9.999999999999999e22@ rather than the shorter @1e23@; the
+-- algorithm doesn't take the rounding direction for values exactly
+-- half-way between two adjacent representable values into account, so
+-- if you have a value with a short decimal representation exactly
+-- half-way between two adjacent representable values, like @5^23*2^e@
+-- for @e@ close to 23, the algorithm doesn't know in which direction
+-- the short decimal representation would be rounded and computes more
+-- digits
+fromFloatDigits :: (RealFloat a) => a -> Scientific
+fromFloatDigits = positivize fromNonNegRealFloat
     where
       fromNonNegRealFloat r = go digits 0 0
         where
-          (digits, e) = floatToDigits 10 r
+          (digits, e) = Numeric.floatToDigits 10 r
 
           go []     !c !n = Scientific c (e - n)
           go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
 
 -- | Convert a 'Scientific' number into a 'RealFloat' (like a 'Double'
 -- or a 'Float').
+--
+-- Note that this function uses 'realToFrac'
+-- (@'fromRational' . 'toRational'@) internally.
 toRealFloat :: forall a. (RealFloat a) => Scientific -> a
 toRealFloat s@(Scientific c e)
     | e >  hiLimit                    = 1/0 -- Infinity

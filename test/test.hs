@@ -49,8 +49,8 @@ main = defaultMain $ testGroup "scientific"
           BLC8.unpack (B.toLazyByteString $ B.formatScientificBuilder B.Generic Nothing s)
       ]
 
-    , testProperty "formatScientific_fromRealFloat" $ \(d::Double) ->
-        formatScientific B.Generic Nothing (Scientific.fromRealFloat d) ==
+    , testProperty "formatScientific_fromFloatDigits" $ \(d::Double) ->
+        formatScientific B.Generic Nothing (Scientific.fromFloatDigits d) ==
         show d
 
     -- , testProperty "formatScientific_realToFrac" $ \(d::Double) ->
@@ -135,20 +135,20 @@ conversionsProperties :: forall realFloat.
                       => realFloat -> [TestTree]
 conversionsProperties _ =
   [
-    -- testProperty "fromRealFloat_1" $ \(d :: realFloat) ->
-    --   Scientific.fromRealFloat d === realToFrac d
+    -- testProperty "fromFloatDigits_1" $ \(d :: realFloat) ->
+    --   Scientific.fromFloatDigits d === realToFrac d
 
-    -- testProperty "fromRealFloat_2" $ \(s :: Scientific) ->
-    --   Scientific.fromRealFloat (realToFrac s :: realFloat) == s
+    -- testProperty "fromFloatDigits_2" $ \(s :: Scientific) ->
+    --   Scientific.fromFloatDigits (realToFrac s :: realFloat) == s
 
     testProperty "toRealFloat" $ \(d :: realFloat) ->
       (Scientific.toRealFloat . realToFrac) d == d
 
-  , testProperty "toRealFloat . fromRealFloat == id" $ \(d :: realFloat) ->
-      (Scientific.toRealFloat . Scientific.fromRealFloat) d == d
+  , testProperty "toRealFloat . fromFloatDigits == id" $ \(d :: realFloat) ->
+      (Scientific.toRealFloat . Scientific.fromFloatDigits) d == d
 
-  -- , testProperty "fromRealFloat . toRealFloat == id" $ \(s :: Scientific) ->
-  --     Scientific.fromRealFloat (Scientific.toRealFloat s :: realFloat) == s
+  -- , testProperty "fromFloatDigits . toRealFloat == id" $ \(s :: Scientific) ->
+  --     Scientific.fromFloatDigits (Scientific.toRealFloat s :: realFloat) == s
   ]
 
 testProperty :: (SC.Testable IO test, QC.Testable test)
