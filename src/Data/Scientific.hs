@@ -18,7 +18,7 @@
 --
 -- The main application of 'Scientific' is to be used as the target of parsing
 -- arbitrary precision numbers coming from an untrusted source. The advantages
--- over using 'Rational' for this is that:
+-- over using 'Rational' for this are that:
 --
 -- * A 'Scientific' is more efficient to construct. Rational numbers need to be
 -- constructed using '%' which has to compute the 'gcd' of the 'numerator' and
@@ -32,8 +32,8 @@
 --  > > read "1e1000000000" :: Scientific
 --  > 1.0e1000000000
 --
--- Also the space usage of converting scientific numbers with huge exponents to
--- @'Integral's@ (like: 'Int') or @'RealFloat's@ (like: 'Double' or 'Float')
+-- * Also, the space usage of converting scientific numbers with huge exponents
+-- to @'Integral's@ (like: 'Int') or @'RealFloat's@ (like: 'Double' or 'Float')
 -- will always be bounded by the target type.
 --
 -- This module is designed to be imported qualified:

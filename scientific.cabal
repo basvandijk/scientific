@@ -1,18 +1,37 @@
 name:                scientific
 version:             0.3.0.0
-synopsis:            Arbitrary-precision floating-point numbers represented using scientific notation
-description:         A @Scientific@ number is an arbitrary-precision floating-point number
-                     represented using scientific notation.
-                     .
-                     A scientific number with 'coefficient' @c@ and
-                     'base10Exponent' @e@ corresponds to the
-                     'Fractional' number: @'fromInteger' c * 10 '^^' e@
-                     .
-                     Its primary use-case is to serve as the target of
-                     parsing floating point numbers. Since the textual
-                     representation of floating point numbers use
-                     scientific notation they can be efficiently
-                     parsed to a @Scientific@ number.
+synopsis:            Numbers represented using scientific notation
+description:
+  @Data.Scientific@ provides a space efficient and arbitrary precision
+  scientific number type.
+  .
+  'Scientific' numbers are represented using
+  <http://en.wikipedia.org/wiki/Scientific_notation scientific notation>. It
+  uses a coefficient @c :: 'Integer'@ and a base-10 exponent @e :: 'Int'@ (do
+  note that since we're using an 'Int' to represent the exponent these numbers
+  aren't truly arbitrary precision). A scientific number corresponds to the
+  'Fractional' number: @'fromInteger' c * 10 '^^' e@.
+  .
+  The main application of 'Scientific' is to be used as the target of parsing
+  arbitrary precision numbers coming from an untrusted source. The advantages
+  over using 'Rational' for this are that:
+  .
+  * A 'Scientific' is more efficient to construct. Rational numbers need to be
+  constructed using '%' which has to compute the 'gcd' of the 'numerator' and
+  'denominator'. Scientific numbers only need to be normalized, i.e. @10000000@
+  to @1e7@.
+  .
+  * 'Scientific' is safe against numbers with huge exponents. For example:
+  @1e1000000000 :: 'Rational'@ will fill up all space and crash your
+  program. Scientific works as expected:
+  .
+   > > read "1e1000000000" :: Scientific
+   > 1.0e1000000000
+  .
+  * Also, the space usage of converting scientific numbers with huge exponents to
+  @'Integral's@ (like: 'Int') or @'RealFloat's@ (like: 'Double' or 'Float')
+  will always be bounded by the target type.
+
 homepage:            https://github.com/basvandijk/scientific
 bug-reports:         https://github.com/basvandijk/scientific/issues
 license:             BSD3
