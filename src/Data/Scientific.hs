@@ -6,6 +6,36 @@
 -- License     :  BSD3
 -- Maintainer  :  Bas van Dijk <v.dijk.bas@gmail.com>
 --
+-- @Data.Scientific@ provides a space efficient and arbitrary precision
+-- scientific number type.
+--
+-- 'Scientific' numbers are represented using
+-- <http://en.wikipedia.org/wiki/Scientific_notation scientific notation>. It
+-- uses an 'Integer' 'coefficient' @c@ and an 'Int' 'base10Exponent' @e@ (do
+-- note that since we're using an 'Int' to represent the exponent these numbers
+-- aren't truly arbitrary precision). A scientific number corresponds to the
+-- 'Fractional' number: @'fromInteger' c * 10 '^^' e@.
+--
+-- The main application of 'Scientific' is to be used as the target of parsing
+-- arbitrary precision numbers coming from an untrusted source. The advantages
+-- over using 'Rational' for this is that:
+--
+-- * A 'Scientific' is more efficient to construct. Rational numbers need to be
+-- constructed using '%' which has to compute the 'gcd' of the 'numerator' and
+-- 'denominator'. Scientific numbers only need to be normalized, i.e. @10000000@
+-- to @1e7@.
+--
+-- * 'Scientific' is safe against numbers with huge exponents. For example:
+-- @1e1000000000 :: 'Rational'@ will fill up all space and crash your
+-- program. Scientific works as expected:
+--
+--  > > read "1e1000000000" :: Scientific
+--  > 1.0e1000000000
+--
+-- Also the space usage of converting scientific numbers with huge exponents to
+-- @'Integral's@ (like: 'Int') or @'RealFloat's@ (like: 'Double' or 'Float')
+-- will always be bounded by the target type.
+--
 -- This module is designed to be imported qualified:
 --
 -- @import Data.Scientific as Scientific@
@@ -76,6 +106,9 @@ data Scientific = Scientific
 
 -- | @scientific c e@ constructs a scientific number which corresponds
 -- to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@.
+--
+-- Note that this function performs normalization, i.e. it divides out powers of
+-- 10 from @c@ and adds them to @e@.
 scientific :: Integer -> Int -> Scientific
 scientific c !e
     | c > 0     = normalize c e
@@ -154,11 +187,26 @@ instance Num Scientific where
     fromInteger i = scientific i 0
     {-# INLINE fromInteger #-}
 
+-- | /WARNING:/ 'toRational' needs to compute the 'Integer' magnitude:
+-- @10^e@. If applied to a huge exponent this could fill up all space
+-- and crash your program!
+--
+-- Avoid applying 'toRational' (or 'realToFrac') to scientific numbers
+-- coming from an untrusted source and use 'toRealFloat' instead. The
+-- latter guards against excessive space usage.
 instance Real Scientific where
     toRational (Scientific c e)
       | e < 0     =  c % magnitude (-e)
       | otherwise = (c * magnitude   e) % 1
     {-# INLINE toRational #-}
+
+{-# RULES
+  "realToFrac_toRealFloat_Double"
+   realToFrac = toRealFloat :: Scientific -> Double #-}
+
+{-# RULES
+  "realToFrac_toRealFloat_Float"
+   realToFrac = toRealFloat :: Scientific -> Float #-}
 
 -- | /WARNING:/ 'recip' and '/' will diverge when their outputs have
 -- an infinite decimal expansion. 'fromRational' will diverge when the
@@ -242,28 +290,45 @@ instance RealFrac Scientific where
 
 
 ----------------------------------------------------------------------
--- Exponentiation with a cache for the most common numbers.
-----------------------------------------------------------------------
-
-maxExpt :: Int
-maxExpt = 1100
-
-expts10 :: Array Int Integer
-expts10 = listArray (0, maxExpt) $ iterate (*10) 1
-
--- | @magnitude e == 10 ^ e@
-magnitude :: (Num a) => Int -> a
-magnitude e | e <= maxExpt = cachedPow10 e
-            | otherwise    = cachedPow10 maxExpt * 10 ^ (e - maxExpt)
-    where
-      cachedPow10 p = fromInteger (expts10 ! p)
-{-# INLINE magnitude #-}
-
-
-----------------------------------------------------------------------
 -- Internal utilities
 ----------------------------------------------------------------------
 
+-- | This function is used in the 'RealFrac' methods to guard against
+-- computing a huge magnitude (-e) which could take up all space.
+--
+-- Think about parsing a scientific number from an untrusted
+-- string. An attacker could supply 1e-1000000000. Lets say we want to
+-- 'floor' that number to an 'Int'. When we naively try to floor it
+-- using:
+--
+-- @
+-- floor = whenFloating $ \c e ->
+--           fromInteger (c `div` magnitude (-e))
+-- @
+--
+-- We will compute the huge Integer: @magnitude 1000000000@. This
+-- computation will quickly fill up all space and crash the program.
+--
+-- Note that for large /positive/ exponents there is no risk of a
+-- space-leak since 'whenFloating' will compute:
+--
+-- @fromInteger c * magnitude e :: a@
+--
+-- where @a@ is the target type (Int in this example). So here the
+-- space usage is bounded by the target type.
+--
+-- For large negative exponents we check if the exponent is smaller
+-- than some limit (currently -20). In that case we know that the
+-- scientific number is really small (unless the coefficient has many
+-- digits) so we can immediately return -1 for negative scientific
+-- numbers or 0 for positive numbers.
+--
+-- More precisely if @dangerouslySmall c e@ returns 'True' the
+-- scientific number @s@ is guaranteed to be between:
+-- @-0.1 > s < 0.1@.
+--
+-- Note that we avoid computing the number of decimal digits in c
+-- (log10 c) if the exponent is not below the limit.
 dangerouslySmall :: Integer -> Int -> Bool
 dangerouslySmall c e = e < (-limit) && e < (-integerLog10' (abs c)) - 1
     where
@@ -284,25 +349,42 @@ whenFloating f (Scientific c e)
 
 
 ----------------------------------------------------------------------
+-- Exponentiation with a cache for the most common numbers.
+----------------------------------------------------------------------
+
+maxExpt :: Int
+maxExpt = 1100
+
+expts10 :: Array Int Integer
+expts10 = listArray (0, maxExpt) $ iterate (*10) 1
+
+-- | @magnitude e == 10 ^ e@
+magnitude :: (Num a) => Int -> a
+magnitude e | e <= maxExpt = cachedPow10 e
+            | otherwise    = cachedPow10 maxExpt * 10 ^ (e - maxExpt)
+    where
+      cachedPow10 p = fromInteger (expts10 ! p)
+{-# INLINE magnitude #-}
+
+
+----------------------------------------------------------------------
 -- Conversions
 ----------------------------------------------------------------------
 
--- | Convert a 'RealFloat' (like a 'Double' or 'Float') into a
--- 'Scientific' number.
+-- | Convert a 'RealFloat' (like a 'Double' or 'Float') into a 'Scientific'
+-- number.
 --
--- Note that this function uses 'Numeric.floatToDigits' to compute the
--- digits and exponent of the 'RealFloat' number. Be aware that the
--- algorithm used in 'Numeric.floatToDigits' doesn't work as expected
--- for some numbers, e.g. as a @1e23 :: 'Double'@ is converted to
--- @9.9999999999999991611392e22@, and that value is shown as
--- @9.999999999999999e22@ rather than the shorter @1e23@; the
--- algorithm doesn't take the rounding direction for values exactly
--- half-way between two adjacent representable values into account, so
--- if you have a value with a short decimal representation exactly
--- half-way between two adjacent representable values, like @5^23*2^e@
--- for @e@ close to 23, the algorithm doesn't know in which direction
--- the short decimal representation would be rounded and computes more
--- digits
+-- Note that this function uses 'Numeric.floatToDigits' to compute the digits
+-- and exponent of the 'RealFloat' number. Be aware that the algorithm used in
+-- 'Numeric.floatToDigits' doesn't work as expected for some numbers, e.g. as
+-- the 'Double' @1e23@ is converted to @9.9999999999999991611392e22@, and that
+-- value is shown as @9.999999999999999e22@ rather than the shorter @1e23@; the
+-- algorithm doesn't take the rounding direction for values exactly half-way
+-- between two adjacent representable values into account, so if you have a
+-- value with a short decimal representation exactly half-way between two
+-- adjacent representable values, like @5^23*2^e@ for @e@ close to 23, the
+-- algorithm doesn't know in which direction the short decimal representation
+-- would be rounded and computes more digits
 fromFloatDigits :: (RealFloat a) => a -> Scientific
 fromFloatDigits = positivize fromNonNegRealFloat
     where
@@ -317,7 +399,12 @@ fromFloatDigits = positivize fromNonNegRealFloat
 -- or a 'Float').
 --
 -- Note that this function uses 'realToFrac'
--- (@'fromRational' . 'toRational'@) internally.
+-- (@'fromRational' . 'toRational'@) internally but it guards against
+-- computing huge Integer magnitudes (@10^e@) that could fill up all
+-- space and crash your program.
+--
+-- Always prefer 'toRealFloat' over 'realToFrac' when converting from
+-- scientific numbers coming from an untrusted source.
 toRealFloat :: forall a. (RealFloat a) => Scientific -> a
 toRealFloat s@(Scientific c e)
     | e >  hiLimit                    = 1/0 -- Infinity
