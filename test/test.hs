@@ -27,7 +27,7 @@ import qualified Data.Text.Lazy.Builder.Scientific  as T
 
 main :: IO ()
 main = defaultMain $ testGroup "scientific"
-  [ smallQuick "mod c 10 /= 0"
+  [ smallQuick "normalization"
       (\s -> s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
       (\s -> s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
 
@@ -126,25 +126,29 @@ main = defaultMain $ testGroup "scientific"
     ]
   ]
 
-conversionsProperties
-    :: forall a. (RealFloat a, QC.Arbitrary a, SC.Serial IO a, Show a)
-    => a -> [TestTree]
+conversionsProperties :: forall realFloat.
+                         ( RealFloat    realFloat
+                         , QC.Arbitrary realFloat
+                         , SC.Serial IO realFloat
+                         , Show         realFloat
+                         )
+                      => realFloat -> [TestTree]
 conversionsProperties _ =
   [
-    -- testProperty "fromRealFloat_1" $ \(d :: a) ->
+    -- testProperty "fromRealFloat_1" $ \(d :: realFloat) ->
     --   Scientific.fromRealFloat d === realToFrac d
 
     -- testProperty "fromRealFloat_2" $ \(s :: Scientific) ->
-    --   Scientific.fromRealFloat (realToFrac s :: a) == s
+    --   Scientific.fromRealFloat (realToFrac s :: realFloat) == s
 
-    testProperty "toRealFloat" $ \(d :: a) ->
+    testProperty "toRealFloat" $ \(d :: realFloat) ->
       (Scientific.toRealFloat . realToFrac) d == d
 
-  , testProperty "toRealFloat . fromRealFloat == id" $ \(d :: a) ->
+  , testProperty "toRealFloat . fromRealFloat == id" $ \(d :: realFloat) ->
       (Scientific.toRealFloat . Scientific.fromRealFloat) d == d
 
   -- , testProperty "fromRealFloat . toRealFloat == id" $ \(s :: Scientific) ->
-  --     Scientific.fromRealFloat (Scientific.toRealFloat s :: a) == s
+  --     Scientific.fromRealFloat (Scientific.toRealFloat s :: realFloat) == s
   ]
 
 testProperty :: (SC.Testable IO test, QC.Testable test)
