@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -19,11 +20,15 @@ import qualified Test.QuickCheck                    as QC
 import qualified Test.Tasty.QuickCheck              as QC  (testProperty)
 import qualified Data.Text.Lazy                     as TL  (unpack)
 import qualified Data.Text.Lazy.Builder             as TLB (toLazyText)
-import qualified Data.ByteString.Builder            as B
 import qualified Data.ByteString.Lazy.Char8         as BLC8
 import qualified Data.ByteString.Builder.Scientific as B
 import qualified Data.Text.Lazy.Builder.Scientific  as T
 
+#if !MIN_VERSION_bytestring(0,10,2)
+import qualified Data.ByteString.Lazy.Builder       as B
+#else
+import qualified Data.ByteString.Builder            as B
+#endif
 
 main :: IO ()
 main = defaultMain $ testGroup "scientific"
