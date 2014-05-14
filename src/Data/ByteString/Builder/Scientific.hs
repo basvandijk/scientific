@@ -16,13 +16,14 @@ import qualified Data.ByteString.Char8 as BC8
 #if !MIN_VERSION_bytestring(0,10,2)
 import           Data.ByteString.Lazy.Builder (Builder, string8, char8)
 import           Data.ByteString.Lazy.Builder.ASCII (intDec)
-import           Data.ByteString.Lazy.Builder.Extra (byteStringCopy)
+import           Data.ByteString.Lazy.Builder.Extras (byteStringCopy)
 #else
 import           Data.ByteString.Builder (Builder, string8, char8, intDec)
 import           Data.ByteString.Builder.Extra (byteStringCopy)
 #endif
 
 import GHC.Base                     (Int(I#), Char(C#), chr#, ord#, (+#))
+import Data.Monoid                  (mempty)
 #if MIN_VERSION_base(4,5,0)
 import Data.Monoid                  ((<>))
 #else
@@ -99,13 +100,13 @@ formatScientificBuilder fmt decs scntfc
           (ei,is') = roundTo (dec' + e) is
           (ls,rs)  = splitAt (e+ei) (map i2d is')
          in
-         mk0 ls <> (if null rs then "" else char8 '.' <> string8 rs)
+         mk0 ls <> (if null rs then mempty else char8 '.' <> string8 rs)
         else
          let
           (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
           d:ds' = map i2d (if ei > 0 then is' else 0:is')
          in
-         char8 d <> (if null ds' then "" else char8 '.' <> string8 ds')
+         char8 d <> (if null ds' then mempty else char8 '.' <> string8 ds')
 
 -- | Unsafe conversion for decimal digits.
 {-# INLINE i2d #-}
