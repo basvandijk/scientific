@@ -244,11 +244,19 @@ nonNegativeScientificSeries = liftM SC.getNonNegative SC.series
 ----------------------------------------------------------------------
 
 instance QC.Arbitrary Scientific where
-    arbitrary = scientific <$> QC.arbitrary <*> QC.arbitrary
+    arbitrary = scientific <$> QC.arbitrary <*> intGen
 
     shrink s = zipWith scientific (QC.shrink $ Scientific.coefficient s)
                                   (QC.shrink $ Scientific.base10Exponent s)
 
 nonNegativeScientificGen :: QC.Gen Scientific
-nonNegativeScientificGen = scientific <$> (QC.getNonNegative <$> QC.arbitrary)
-                                      <*> QC.arbitrary
+nonNegativeScientificGen =
+    scientific <$> (QC.getNonNegative <$> QC.arbitrary)
+               <*> intGen
+
+intGen :: QC.Gen Int
+#if MIN_VERSION_QuickCheck(2,7,0)
+intGen = QC.arbitrary
+#else
+intGen = QC.sized $ \n -> QC.choose (-n, n)
+#endif
