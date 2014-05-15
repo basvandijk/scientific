@@ -83,10 +83,16 @@ test-suite test-scientific
 
 benchmark bench-scientific
   type:             exitcode-stdio-1.0
-  hs-source-dirs:   bench
+  hs-source-dirs:   bench src
   main-is:          bench.hs
   default-language: Haskell2010
   ghc-options:      -O2
-  build-depends:    scientific
-                  , base       >= 4.3 && < 4.8
+  build-depends:    base       >= 4.3 && < 4.8
                   , criterion  >= 0.5 && < 0.12
+                  , ghc-prim
+                  , integer-gmp
+                  , deepseq     >= 1.3   && < 1.4
+                  , text        >= 0.8   && < 1.3
+                  , bytestring  >= 0.10  && < 0.11
+                  , hashable    >= 1.1.2 && < 1.3
+                  , array       >= 0.1   && < 0.6
