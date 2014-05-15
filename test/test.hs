@@ -13,6 +13,7 @@ import           Control.Applicative
 import           Control.Monad
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
+import           Test.Tasty.Runners.AntXML
 import qualified Test.SmallCheck                    as SC
 import qualified Test.SmallCheck.Series             as SC
 import qualified Test.Tasty.SmallCheck              as SC  (testProperty)
@@ -31,7 +32,7 @@ import qualified Data.ByteString.Builder            as B
 #endif
 
 main :: IO ()
-main = defaultMain $ testGroup "scientific"
+main = testMain $ testGroup "scientific"
   [ smallQuick "normalization"
       (\s -> s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
       (\s -> s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
@@ -130,6 +131,9 @@ main = defaultMain $ testGroup "scientific"
     , testGroup "Double" $ conversionsProperties (undefined :: Double)
     ]
   ]
+
+testMain :: TestTree -> IO ()
+testMain = defaultMainWithIngredients (antXMLRunner:defaultIngredients)
 
 conversionsProperties :: forall realFloat.
                          ( RealFloat    realFloat

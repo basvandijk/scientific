@@ -73,7 +73,8 @@ test-suite test-scientific
 
   build-depends: scientific
                , base             >= 4.3   && < 4.8
-               , tasty            >= 0.3.1 && < 0.9
+               , tasty            >= 0.5   && < 0.9
+               , tasty-ant-xml    >= 1.0   && < 1.1
                , tasty-smallcheck >= 0.2   && < 0.9
                , tasty-quickcheck >= 0.8   && < 0.9
                , smallcheck       >= 1.0   && < 1.2
