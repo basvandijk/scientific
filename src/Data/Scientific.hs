@@ -22,8 +22,7 @@
 --
 -- * A 'Scientific' is more efficient to construct. Rational numbers need to be
 -- constructed using '%' which has to compute the 'gcd' of the 'numerator' and
--- 'denominator'. Scientific numbers only need to be normalized, i.e. @10000000@
--- to @1e7@.
+-- 'denominator'.
 --
 -- * 'Scientific' is safe against numbers with huge exponents. For example:
 -- @1e1000000000 :: 'Rational'@ will fill up all space and crash your
@@ -99,6 +98,12 @@ import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 data Scientific = Scientific
     { coefficient    ::                !Integer
       -- ^ The coefficient of a scientific number.
+      --
+      -- Note that this number is not necessarily normalized, i.e.
+      -- it could contain trailing zeros.
+      --
+      -- Scientific numbers are only normalized when pretty printed or in
+      -- 'toDecimalDigits'.
 
     , base10Exponent :: {-# UNPACK #-} !Int
       -- ^ The base-10 exponent of a scientific number.
@@ -106,20 +111,8 @@ data Scientific = Scientific
 
 -- | @scientific c e@ constructs a scientific number which corresponds
 -- to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@.
---
--- Note that this function performs normalization, i.e. it divides out powers of
--- 10 from @c@ and adds them to @e@.
 scientific :: Integer -> Int -> Scientific
-scientific c !e
-    | c > 0     = normalize c e
-    | c == 0    = Scientific 0 0
-    | otherwise = -(normalize (-c) e)
-{-# INLINE scientific #-}
-
-normalize :: Integer -> Int -> Scientific
-normalize c !e = case quotRem c 10 of
-                   (q, 0) -> normalize q (e+1)
-                   _      -> Scientific c e
+scientific = Scientific
 
 
 ----------------------------------------------------------------------
@@ -589,7 +582,7 @@ roundTo d is =
 
 ----------------------------------------------------------------------
 
--- | Similar to 'floatToDigits', @toDecimalDigits@ takes a
+-- | Similar to 'Numeric.floatToDigits', @toDecimalDigits@ takes a
 -- non-negative 'Scientific' number, and returns a list of digits and
 -- a base-10 exponent. In particular, if @x>=0@, and
 --
@@ -602,10 +595,17 @@ roundTo d is =
 --      (2) @x = 0.d1d2...dn * (10^^e)@
 --
 --      (3) @0 <= di <= 9@
+--
+--      (4) @null $ takeWhile (==0) $ reverse [d1,d2,...,dn]@
+--
+-- The last property means that the coefficient will be normalized, i.e. doesn't
+-- contain trailing zeros.
 toDecimalDigits :: Scientific -> ([Int], Int)
 toDecimalDigits (Scientific 0 _) = ([0], 0)
-toDecimalDigits (Scientific c e) = (is, n + e)
+toDecimalDigits s                = (is, n + e)
   where
+    Scientific c e = normalize s
+
     (is, n) = reverseAndLength $ digits c
 
     digits :: Integer -> [Int]
@@ -619,3 +619,13 @@ toDecimalDigits (Scientific c e) = (is, n + e)
       where
         rev []     a !m = (a, m)
         rev (x:xs) a !m = rev xs (x:a) (m+1)
+
+-- | Given a positive number @normalize@ divides out powers of 10 from the
+-- coefficient and increments the exponent each time.
+normalize :: Scientific -> Scientific
+normalize (Scientific c' e') = go c' e'
+  where
+    go :: Integer -> Int -> Scientific
+    go c !e = case quotRem c 10 of
+                (q, 0) -> go q (e+1)
+                _      -> Scientific c e

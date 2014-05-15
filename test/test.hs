@@ -33,11 +33,13 @@ import qualified Data.ByteString.Builder            as B
 
 main :: IO ()
 main = testMain $ testGroup "scientific"
-  [ smallQuick "normalization"
-      (\s -> s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
-      (\s -> s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+  [
+    -- I don't normalize on construction anymore (only on pretty printing):
+    -- smallQuick "normalization"
+    --   (\s -> s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+    --   (\s -> s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
 
-  , testGroup "Formatting"
+    testGroup "Formatting"
     [ testProperty "read . show == id" $ \s -> read (show s) === s
 
     , smallQuick "toDecimalDigits_laws"
@@ -187,14 +189,18 @@ toDecimalDigits_laws :: Scientific -> Bool
 toDecimalDigits_laws x =
   let (ds, e) = Scientific.toDecimalDigits x
 
-      rule1 = length ds >= 1
+      rule1 = n >= 1
+      n     = length ds
 
       rule2 = toRational x == coeff * 10 ^^ e
       coeff = foldr (\di a -> a / 10 + fromIntegral di) 0 (0:ds)
 
       rule3 = all (\di -> 0 <= di && di <= 9) ds
 
-  in rule1 && rule2 && rule3
+      rule4 | n == 1    = True
+            | otherwise = null $ takeWhile (==0) $ reverse ds
+
+  in rule1 && rule2 && rule3 && rule4
 
 properFraction_laws :: Scientific -> Bool
 properFraction_laws x = fromInteger n + f === x        &&

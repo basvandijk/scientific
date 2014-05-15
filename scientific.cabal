@@ -18,8 +18,7 @@ description:
   .
   * A 'Scientific' is more efficient to construct. Rational numbers need to be
   constructed using '%' which has to compute the 'gcd' of the 'numerator' and
-  'denominator'. Scientific numbers only need to be normalized, i.e. @10000000@
-  to @1e7@.
+  'denominator'.
   .
   * 'Scientific' is safe against numbers with huge exponents. For example:
   @1e1000000000 :: 'Rational'@ will fill up all space and crash your
