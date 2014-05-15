@@ -311,7 +311,7 @@ instance RealFrac Scientific where
 -- space usage is bounded by the target type.
 --
 -- For large negative exponents we check if the exponent is smaller
--- than some limit (currently -20). In that case we know that the
+-- than some limit (currently -1100). In that case we know that the
 -- scientific number is really small (unless the coefficient has many
 -- digits) so we can immediately return -1 for negative scientific
 -- numbers or 0 for positive numbers.
@@ -324,10 +324,10 @@ instance RealFrac Scientific where
 -- (log10 c) if the exponent is not below the limit.
 dangerouslySmall :: Integer -> Int -> Bool
 dangerouslySmall c e = e < (-limit) && e < (-integerLog10' (abs c)) - 1
-    where
-      limit :: Int
-      limit = 20
 {-# INLINE dangerouslySmall #-}
+
+limit :: Int
+limit = maxExpt
 
 positivize :: (Ord a, Num a, Num b) => (a -> b) -> (a -> b)
 positivize f x | x < 0      = -(f (-x))
@@ -400,25 +400,30 @@ fromFloatDigits = positivize fromNonNegRealFloat
 -- scientific numbers coming from an untrusted source.
 toRealFloat :: forall a. (RealFloat a) => Scientific -> a
 toRealFloat s@(Scientific c e)
-    | e >  hiLimit                    = sign (1/0) -- Infinity
-    | e <  loLimit && e + d < loLimit = sign 0
-    | otherwise                       = realToFrac s
+    | e >  limit && e > hiLimit                    = sign (1/0) -- Infinity
+    | e < -limit && e < loLimit && e + d < loLimit = sign 0
+    | otherwise                                    = realToFrac s
   where
-    hiLimit = ceiling (fromIntegral hi     * log10Radix)
-    loLimit = floor   (fromIntegral lo     * log10Radix) -
-              ceiling (fromIntegral digits * log10Radix)
-
-    log10Radix :: Double
-    log10Radix = logBase 10 $ fromInteger radix
-
-    radix    = floatRadix  (undefined :: a)
-    digits   = floatDigits (undefined :: a)
-    (lo, hi) = floatRange  (undefined :: a)
+    (loLimit, hiLimit) = exponentLimits (undefined :: a)
 
     d = integerLog10' (abs c)
 
     sign x | c < 0     = -x
            | otherwise =  x
+
+exponentLimits :: forall a. (RealFloat a) => a -> (Int, Int)
+exponentLimits _ = (loLimit, hiLimit)
+    where
+      loLimit = floor   (fromIntegral lo     * log10Radix) -
+                ceiling (fromIntegral digits * log10Radix)
+      hiLimit = ceiling (fromIntegral hi     * log10Radix)
+
+      log10Radix :: Double
+      log10Radix = logBase 10 $ fromInteger radix
+
+      radix    = floatRadix  (undefined :: a)
+      digits   = floatDigits (undefined :: a)
+      (lo, hi) = floatRange  (undefined :: a)
 
 
 ----------------------------------------------------------------------
