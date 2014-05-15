@@ -35,6 +35,11 @@
 -- to @'Integral's@ (like: 'Int') or @'RealFloat's@ (like: 'Double' or 'Float')
 -- will always be bounded by the target type.
 --
+-- Note that, in order to do fast magnitude computations (@10^e@), this module
+-- computes the first 1100 powers of 10 and stores them in a top-level
+-- array. This means that the first magnitude computation (used in 'realToFrac'
+-- among others) is slower but subsequent computations should be O(1).
+--
 -- This module is designed to be imported qualified:
 --
 -- @import Data.Scientific as Scientific@
