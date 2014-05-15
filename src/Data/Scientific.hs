@@ -62,6 +62,9 @@ module Data.Scientific
     , FPFormat(..)
 
     , toDecimalDigits
+
+      -- * Normalization
+    , normalize
     ) where
 
 
@@ -107,8 +110,10 @@ data Scientific = Scientific
       -- Note that this number is not necessarily normalized, i.e.
       -- it could contain trailing zeros.
       --
-      -- Scientific numbers are only normalized when pretty printed or in
-      -- 'toDecimalDigits'.
+      -- Scientific numbers are automatically normalized when pretty printed or
+      -- in 'toDecimalDigits'.
+      --
+      -- Use 'normalize' to do manual normalization.
 
     , base10Exponent :: {-# UNPACK #-} !Int
       -- ^ The base-10 exponent of a scientific number.
@@ -611,10 +616,10 @@ roundTo d is =
 -- The last property means that the coefficient will be normalized, i.e. doesn't
 -- contain trailing zeros.
 toDecimalDigits :: Scientific -> ([Int], Int)
-toDecimalDigits (Scientific 0 _) = ([0], 0)
-toDecimalDigits s                = (is, n + e)
+toDecimalDigits (Scientific 0  _)  = ([0], 0)
+toDecimalDigits (Scientific c' e') = (is,  n + e)
   where
-    Scientific c e = normalize s
+    Scientific c e = normalizePositive c' e'
 
     (is, n) = reverseAndLength $ digits c
 
@@ -630,12 +635,23 @@ toDecimalDigits s                = (is, n + e)
         rev []     a !m = (a, m)
         rev (x:xs) a !m = rev xs (x:a) (m+1)
 
--- | Given a positive number @normalize@ divides out powers of 10 from the
--- coefficient and increments the exponent each time.
+
+----------------------------------------------------------------------
+-- Normalization
+----------------------------------------------------------------------
+
+-- | Normalize a scientific number by dividing out powers of 10 from the
+-- 'coefficient' and incrementing the 'base10Exponent' each time.
+--
+-- You should rarely have a need for this function since scientific numbers are
+-- automatically normalized when pretty-printed and in 'toDecimalDigits'.
 normalize :: Scientific -> Scientific
-normalize (Scientific c' e') = go c' e'
-  where
-    go :: Integer -> Int -> Scientific
-    go c !e = case quotRem c 10 of
-                (q, 0) -> go q (e+1)
-                _      -> Scientific c e
+normalize (Scientific c e)
+    | c < 0 = -(normalizePositive (-c) e)
+    | c > 0 =   normalizePositive   c  e
+    | otherwise {- c == 0 -} = Scientific 0 0
+
+normalizePositive :: Integer -> Int -> Scientific
+normalizePositive c !e = case quotRem c 10 of
+                           (q, 0) -> normalizePositive q (e+1)
+                           _      -> Scientific c e

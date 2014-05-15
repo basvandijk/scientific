@@ -33,13 +33,13 @@ import qualified Data.ByteString.Builder            as B
 
 main :: IO ()
 main = testMain $ testGroup "scientific"
-  [
-    -- I don't normalize on construction anymore (only on pretty printing):
-    -- smallQuick "normalization"
-    --   (\s -> s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
-    --   (\s -> s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+  [ smallQuick "normalization"
+       (SC.over   normalizedScientificSeries $ \s ->
+            s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+       (QC.forAll normalizedScientificGen    $ \s ->
+            s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
 
-    testGroup "Formatting"
+  , testGroup "Formatting"
     [ testProperty "read . show == id" $ \s -> read (show s) === s
 
     , smallQuick "toDecimalDigits_laws"
@@ -248,6 +248,9 @@ scientifics = SC.cons2 scientific
 nonNegativeScientificSeries :: (Monad m) => SC.Series m Scientific
 nonNegativeScientificSeries = liftM SC.getNonNegative SC.series
 
+normalizedScientificSeries :: (Monad m) => SC.Series m Scientific
+normalizedScientificSeries = liftM Scientific.normalize SC.series
+
 
 ----------------------------------------------------------------------
 -- QuickCheck instances
@@ -263,6 +266,9 @@ nonNegativeScientificGen :: QC.Gen Scientific
 nonNegativeScientificGen =
     scientific <$> (QC.getNonNegative <$> QC.arbitrary)
                <*> intGen
+
+normalizedScientificGen :: QC.Gen Scientific
+normalizedScientificGen = Scientific.normalize <$> QC.arbitrary
 
 intGen :: QC.Gen Int
 #if MIN_VERSION_QuickCheck(2,7,0)
