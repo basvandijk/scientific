@@ -1,5 +1,5 @@
 name:                scientific
-version:             0.3.1.0
+version:             0.3.2.0
 synopsis:            Numbers represented using scientific notation
 description:
   @Data.Scientific@ provides a space efficient and arbitrary precision

@@ -131,11 +131,31 @@ main = testMain $ testGroup "scientific"
   , testGroup "Conversions"
     [ testGroup "Float"  $ conversionsProperties (undefined :: Float)
     , testGroup "Double" $ conversionsProperties (undefined :: Double)
+
+    , testGroup "floatingOrInteger"
+      [ testProperty "correct conversion" $ \s ->
+            case floatingOrInteger s :: Either Double Int of
+              Left  d -> d == toRealFloat s
+              Right i -> i == fromInteger (coefficient s') * 10^(base10Exponent s')
+                  where
+                    s' = normalize s
+      , testProperty "Integer == Right" $ \(i::Integer) ->
+          (floatingOrInteger (fromInteger i) :: Either Double Integer) == Right i
+      , smallQuick "Double == Left"
+          (\(d::Double) -> isFloating d SC.==>
+             (floatingOrInteger (realToFrac d) :: Either Double Integer) == Left d)
+          (\(d::Double) -> isFloating d QC.==>
+             (floatingOrInteger (realToFrac d) :: Either Double Integer) == Left d)
+      ]
     ]
   ]
 
 testMain :: TestTree -> IO ()
 testMain = defaultMainWithIngredients (antXMLRunner:defaultIngredients)
+
+isFloating :: Double -> Bool
+isFloating 0 = False
+isFloating d = fromInteger (floor d :: Integer) /= d
 
 conversionsProperties :: forall realFloat.
                          ( RealFloat    realFloat

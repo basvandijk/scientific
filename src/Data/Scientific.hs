@@ -1,4 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable, BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
 -- Module      :  Data.Scientific
@@ -56,6 +58,7 @@ module Data.Scientific
       -- * Conversions
     , fromFloatDigits
     , toRealFloat
+    , floatingOrInteger
 
       -- * Pretty printing
     , formatScientific
@@ -245,7 +248,7 @@ instance RealFrac Scientific where
                       then (0, s)
                       else let (q, r) = c `quotRem` magnitude (-e)
                            in (fromInteger q, scientific r e)
-        | otherwise = (fromInteger c * magnitude e, 0)
+        | otherwise = (toIntegral s, 0)
     {-# INLINE properFraction #-}
 
     -- | @'truncate' s@ returns the integer nearest @s@
@@ -345,10 +348,16 @@ positivize f x | x < 0      = -(f (-x))
 {-# INLINE positivize #-}
 
 whenFloating :: (Num a) => (Integer -> Int -> a) -> Scientific -> a
-whenFloating f (Scientific c e)
+whenFloating f s@(Scientific c e)
     | e < 0     = f c e
-    | otherwise = fromInteger c * magnitude e
+    | otherwise = toIntegral s
 {-# INLINE whenFloating #-}
+
+-- | Precondition: the 'Scientific' @s@ needs to be an integer:
+-- @base10Exponent (normalize s) >= 0@
+toIntegral :: (Num a) => Scientific -> a
+toIntegral (Scientific c e) = fromInteger c * magnitude e
+{-# INLINE toIntegral #-}
 
 
 ----------------------------------------------------------------------
@@ -434,6 +443,17 @@ exponentLimits _ = (loLimit, hiLimit)
       radix    = floatRadix  (undefined :: a)
       digits   = floatDigits (undefined :: a)
       (lo, hi) = floatRange  (undefined :: a)
+
+-- | @floatingOrInteger@ determines if the scientific is floating point
+-- or integer. In case it's floating-point the scientific is converted
+-- to the desired 'RealFloat' using 'toRealFloat'.
+floatingOrInteger :: (RealFloat r, Integral i) => Scientific -> Either r i
+floatingOrInteger s
+    | base10Exponent s  >= 0 = Right (toIntegral   s)
+    | base10Exponent s' >= 0 = Right (toIntegral   s')
+    | otherwise              = Left  (toRealFloat  s')
+  where
+    s' = normalize s
 
 
 ----------------------------------------------------------------------
