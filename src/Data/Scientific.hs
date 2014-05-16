@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -92,6 +93,12 @@ import qualified Text.ParserCombinators.ReadPrec as ReadPrec
 import qualified Text.ParserCombinators.ReadP    as ReadP
 import           Text.ParserCombinators.ReadP     ( ReadP )
 import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
+
+#if MIN_VERSION_base(4,5,0)
+import           Data.Bits                    (unsafeShiftR)
+#else
+import           Data.Bits                    (shiftR)
+#endif
 
 
 ----------------------------------------------------------------------
@@ -368,7 +375,19 @@ maxExpt :: Int
 maxExpt = 1100
 
 expts10 :: Array Int Integer
-expts10 = listArray (0, maxExpt) $ iterate (*10) 1
+expts10 = listArray (0, maxExpt) $ 1 : 10 : go 2
+    where
+      go :: Int -> [Integer]
+      go !ix = xx : 10*xx : go (ix+2)
+          where
+            xx = x * x
+            x  = expts10 ! half
+
+#if MIN_VERSION_base(4,5,0)
+            half = ix `unsafeShiftR` 1
+#else
+            half = ix `shiftR` 1
+#endif
 
 -- | @magnitude e == 10 ^ e@
 magnitude :: (Num a) => Int -> a

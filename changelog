@@ -1,5 +1,8 @@
+0.3.2.0
+
 	* Add the floatingOrInteger function
 	* Fix build on GHC-7.0.4
+	* More efficient and better behaving magnitude computation
 
 0.3.1.0
 
