@@ -1,0 +1,66 @@
+	* Add the floatingOrInteger function
+	* Fix build on GHC-7.0.4
+
+0.3.1.0
+
+	* Don't normalize on construction but do it when pretty-printing
+	  instead. Also provide a manual normalize function.
+	* Improve efficiency of toRealFloat
+	* Added note about caching magnitudes
+	* Dropped dependency on arithmoi
+	* Make benchmark easier to build
+	* Add junit XML output support (for Jenkins)
+
+0.3.0.2
+
+	* Lower the minimal QuickCheck version.
+	* Make sure sized exponents are generated in the QuickCheck tests.
+
+0.3.0.1
+
+	* Fix build for bytestring-0.10.0.*
+
+0.3.0.0
+
+	* Fix a DoS vulnerability that allowed an attacker to crash the
+	  process by sending a scientific with a huge exponent like
+	  1e1000000000.
+	* Fix various RealFrac methods.
+	* Cache some powers of 10 to speed up the magnitude computation.
+	* Normalize scientific numbers on construction.
+	* Move the Text Builder to its own module &
+	  provide a ByteString builder
+	* Added more documentation
+
+0.2.0.2
+
+        * Widen the dreaded pointlessly tight upper bounds
+
+0.2.0.1
+
+	* Support the latest versions of smallcheck and tasty
+
+0.2.0.0
+
+	* added deriving data
+
+0.1.0.1
+
+	* Loosen upper bounds on package versions
+
+0.1.0.0
+
+	* Fixed bugs & Changed API
+
+0.0.0.2
+
+	* Support building the library on GHC >= 7.0.1
+
+0.0.0.1
+
+	* Simplification in the Show instance
+	* Optimization in fromRealFloat
+
+0.0.0.0
+
+	* Initial commit
