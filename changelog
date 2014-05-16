@@ -3,6 +3,7 @@
 	* Add the floatingOrInteger function
 	* Fix build on GHC-7.0.4
 	* More efficient and better behaving magnitude computation
+	* Lower the number of cached magnitudes to 324 (same as GHC.Float)
 
 0.3.1.0
 
