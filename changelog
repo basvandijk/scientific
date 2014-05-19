@@ -1,3 +1,10 @@
+0.3.2.1
+
+	* Parameterize inclusion of the Data.ByteString.Builder.Scientific
+	  module using the bytestring-builder flag. Disabling this flag
+	  allows building on GHC-7.0.4 which has bytestring-0.9 installed
+	  by default.
+
 0.3.2.0
 
 	* Add the floatingOrInteger function
