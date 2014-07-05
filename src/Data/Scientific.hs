@@ -54,6 +54,7 @@ module Data.Scientific
       -- * Conversions
     , fromFloatDigits
     , toRealFloat
+    , toRealFloat'
     , floatingOrInteger
 
       -- * Pretty printing
@@ -433,10 +434,18 @@ fromFloatDigits = positivize fromNonNegRealFloat
 -- Always prefer 'toRealFloat' over 'realToFrac' when converting from
 -- scientific numbers coming from an untrusted source.
 toRealFloat :: forall a. (RealFloat a) => Scientific -> a
-toRealFloat s@(Scientific c e)
-    | e >  limit && e > hiLimit                    = sign (1/0) -- Infinity
-    | e < -limit && e < loLimit && e + d < loLimit = sign 0
-    | otherwise                                    = realToFrac s
+toRealFloat s = case toRealFloat' s of
+                  Left  r -> r
+                  Right r -> r
+
+-- | Preciser version of `toRealFloat`.
+-- If the given `Scientific` is too big or too small, 0 or Infinity will be
+-- returned as `Left`.
+toRealFloat' :: forall a. (RealFloat a) => Scientific -> Either a a
+toRealFloat' s@(Scientific c e)
+    | e >  limit && e > hiLimit                    = Left $ sign (1/0) -- Infinity
+    | e < -limit && e < loLimit && e + d < loLimit = Left $ sign 0
+    | otherwise                                    = Right $ realToFrac s
   where
     (loLimit, hiLimit) = exponentLimits (undefined :: a)
 
