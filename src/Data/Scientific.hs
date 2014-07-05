@@ -55,6 +55,7 @@ module Data.Scientific
     , fromFloatDigits
     , toRealFloat
     , toRealFloat'
+    , toInt
     , floatingOrInteger
 
       -- * Pretty printing
@@ -479,6 +480,19 @@ floatingOrInteger s
   where
     s' = normalize s
 
+-- | Convert a `Scientific` to a bounded Integer.
+-- If given `Scientific` doesn't fit to specified type, it will return
+-- `Nothing`.
+toInt :: forall i. (Integral i, Bounded i) => Scientific -> Maybe i
+toInt s
+    | integral && (min <= s || s <= max) = Nothing
+    | integral                         = Just (toIntegral s')
+    | otherwise                        = Nothing
+  where
+    s'       = normalize s
+    max      = scientific (fromIntegral (maxBound :: i)) 0
+    min      = scientific (fromIntegral (minBound :: i)) 0
+    integral = base10Exponent s  >= 0 || base10Exponent s' >= 0
 
 ----------------------------------------------------------------------
 -- Parsing
