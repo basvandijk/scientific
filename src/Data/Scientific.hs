@@ -56,6 +56,10 @@ module Data.Scientific
     , toRealFloat
     , floatingOrInteger
 
+      -- * Predicates
+    , isFloating
+    , isInteger
+
       -- * Pretty printing
     , formatScientific
     , FPFormat(..)
@@ -469,6 +473,19 @@ floatingOrInteger s
     | otherwise              = Left  (toRealFloat  s')
   where
     s' = normalize s
+
+
+----------------------------------------------------------------------
+-- Predicates
+----------------------------------------------------------------------
+
+-- | Return 'True' if the scientific is a floating point, 'False' otherwise.
+isFloating :: Scientific -> Bool
+isFloating = not . isInteger
+
+-- | Return 'True' if the scientific is an integer, 'False' otherwise.
+isInteger :: Scientific -> Bool
+isInteger s = base10Exponent s >= 0 || base10Exponent (normalize s) >= 0
 
 
 ----------------------------------------------------------------------

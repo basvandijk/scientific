@@ -142,20 +142,23 @@ main = testMain $ testGroup "scientific"
       , testProperty "Integer == Right" $ \(i::Integer) ->
           (floatingOrInteger (fromInteger i) :: Either Double Integer) == Right i
       , smallQuick "Double == Left"
-          (\(d::Double) -> isFloating d SC.==>
+          (\(d::Double) -> genericIsFloating d SC.==>
              (floatingOrInteger (realToFrac d) :: Either Double Integer) == Left d)
-          (\(d::Double) -> isFloating d QC.==>
+          (\(d::Double) -> genericIsFloating d QC.==>
              (floatingOrInteger (realToFrac d) :: Either Double Integer) == Left d)
       ]
+    ]
+  , testGroup "Predicates"
+    [ testProperty "isFloating" $ \s -> isFloating s == genericIsFloating s
+    , testProperty "isInteger" $ \s -> isInteger s == not (genericIsFloating s)
     ]
   ]
 
 testMain :: TestTree -> IO ()
 testMain = defaultMainWithIngredients (antXMLRunner:defaultIngredients)
 
-isFloating :: Double -> Bool
-isFloating 0 = False
-isFloating d = fromInteger (floor d :: Integer) /= d
+genericIsFloating :: RealFrac a => a -> Bool
+genericIsFloating a = fromInteger (floor a :: Integer) /= a
 
 conversionsProperties :: forall realFloat.
                          ( RealFloat    realFloat
