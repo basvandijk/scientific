@@ -51,14 +51,14 @@ module Data.Scientific
     , coefficient
     , base10Exponent
 
+      -- * Predicates
+    , isFloating
+    , isInteger
+
       -- * Conversions
     , fromFloatDigits
     , toRealFloat
     , floatingOrInteger
-
-      -- * Predicates
-    , isFloating
-    , isInteger
 
       -- * Pretty printing
     , formatScientific
@@ -485,7 +485,10 @@ isFloating = not . isInteger
 
 -- | Return 'True' if the scientific is an integer, 'False' otherwise.
 isInteger :: Scientific -> Bool
-isInteger s = base10Exponent s >= 0 || base10Exponent (normalize s) >= 0
+isInteger s = base10Exponent s  >= 0 ||
+              base10Exponent s' >= 0
+  where
+    s' = normalize s
 
 
 ----------------------------------------------------------------------

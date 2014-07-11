@@ -149,8 +149,8 @@ main = testMain $ testGroup "scientific"
       ]
     ]
   , testGroup "Predicates"
-    [ testProperty "isFloating" $ \s -> isFloating s == genericIsFloating s
-    , testProperty "isInteger" $ \s -> isInteger s == not (genericIsFloating s)
+    [ testProperty "isFloating" $ \s -> isFloating s ==      genericIsFloating s
+    , testProperty "isInteger"  $ \s -> isInteger  s == not (genericIsFloating s)
     ]
   ]
 
