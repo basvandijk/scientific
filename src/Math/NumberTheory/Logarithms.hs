@@ -14,6 +14,10 @@ integerLog10' m = I# (integerLogBase# 10 m)
 #else
 import GHC.Base ( Int(I#), Word#, Int#
                 , int2Word#, eqWord#, neWord#, (-#), and#, uncheckedShiftRL#
+
+#if __GLASGOW_HASKELL__ >= 707
+                , isTrue#
+#endif
                 )
 
 #if __GLASGOW_HASKELL__ >= 702
