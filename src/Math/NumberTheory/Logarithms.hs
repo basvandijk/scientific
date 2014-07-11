@@ -3,6 +3,15 @@
 -- | Integer logarithm, copied from Daniel Fischer's @arithmoi@
 module Math.NumberTheory.Logarithms ( integerLog10' ) where
 
+#if defined(INTEGER_SIMPLE) && __GLASGOW_HASKELL__ < 702
+import GHC.Integer.Logarithms (integerLogBase#)
+import GHC.Base (Int(I#))
+
+-- | Only defined for positive inputs!
+integerLog10' :: Integer -> Int
+integerLog10' m = I# (integerLogBase# 10 m)
+
+#else
 import GHC.Base ( Int(I#), Word#, Int#
                 , int2Word#, eqWord#, neWord#, (-#), and#, uncheckedShiftRL#
                 )
@@ -167,4 +176,5 @@ hasBit# w# i# = isTrue# (((w# `uncheckedShiftRL#` i#) `and#` 1##) `neWord#` 0##)
 #if __GLASGOW_HASKELL__ < 707
 isTrue# :: Bool -> Bool
 isTrue# = id
+#endif
 #endif

@@ -55,6 +55,7 @@ flag bytestring-builder
   manual:      True
 
 flag integer-simple
+  description: Use the integer-simple package instead of integer-gmp
   default:     False
 
 library
@@ -72,6 +73,7 @@ library
 
   if flag(integer-simple)
       build-depends: integer-simple
+      CPP-options: -DINTEGER_SIMPLE
   else
       build-depends: integer-gmp
 
