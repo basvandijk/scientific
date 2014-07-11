@@ -1,3 +1,7 @@
+0.3.2.2
+	* Enable package to link with integer-simple instead of
+	  integer-gmp using the -finteger-simple cabal flag.
+
 0.3.2.1
 
 	* Parameterize inclusion of the Data.ByteString.Builder.Scientific
