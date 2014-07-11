@@ -39,9 +39,10 @@
 -- will always be bounded by the target type.
 --
 -- /WARNING:/ Although @Scientific@ is an instance of 'Fractional', the methods
--- are only partially defined! Specifically 'recip' and '/' will diverge when
--- their outputs have an infinite decimal expansion. 'fromRational' will diverge
--- when the input 'Rational' has an infinite decimal expansion.
+-- are only partially defined! Specifically 'recip' and '/' will diverge
+-- (i.e. loop and consume all space) when their outputs have an infinite decimal
+-- expansion. 'fromRational' will diverge when the input 'Rational' has an
+-- infinite decimal expansion.
 --
 -- This module is designed to be imported qualified:
 --
@@ -63,6 +64,8 @@ module Data.Scientific
       -- * Conversions
     , floatingOrInteger
     , toRealFloat
+    , toRealFloat'
+    , toBoundedInteger
     , fromFloatDigits
 
       -- * Pretty printing
@@ -225,9 +228,9 @@ instance Real Scientific where
   "realToFrac_toRealFloat_Float"
    realToFrac = toRealFloat :: Scientific -> Float #-}
 
--- | /WARNING:/ 'recip' and '/' will diverge when their outputs have
--- an infinite decimal expansion. 'fromRational' will diverge when the
--- input 'Rational' has an infinite decimal expansion.
+-- | /WARNING:/ 'recip' and '/' will diverge (i.e. loop and consume all space)
+-- when their outputs have an infinite decimal expansion. 'fromRational' will
+-- diverge when the input 'Rational' has an infinite decimal expansion.
 instance Fractional Scientific where
     recip = fromRational . recip . toRational
     {-# INLINE recip #-}
@@ -441,11 +444,21 @@ fromFloatDigits = positivize fromNonNegRealFloat
 --
 -- Always prefer 'toRealFloat' over 'realToFrac' when converting from
 -- scientific numbers coming from an untrusted source.
-toRealFloat :: forall a. (RealFloat a) => Scientific -> a
-toRealFloat s@(Scientific c e)
-    | e >  limit && e > hiLimit                    = sign (1/0) -- Infinity
-    | e < -limit && e < loLimit && e + d < loLimit = sign 0
-    | otherwise                                    = realToFrac s
+--
+-- If the given `Scientific` is too big or too small for the target
+-- representation, Infinity or 0 will be returned respectively. See
+-- 'toRealFloat'' which allows you to handle these cases explicitly.
+toRealFloat :: (RealFloat a) => Scientific -> a
+toRealFloat = either id id . toRealFloat'
+
+-- | Preciser version of `toRealFloat`. If the given `Scientific` is too big or
+-- too small for the target representation, Infinity or 0 will be returned as
+-- `Left`.
+toRealFloat' :: forall a. (RealFloat a) => Scientific -> Either a a
+toRealFloat' s@(Scientific c e)
+    | e >  limit && e > hiLimit                    = Left  $ sign (1/0) -- Infinity
+    | e < -limit && e < loLimit && e + d < loLimit = Left  $ sign 0
+    | otherwise                                    = Right $ realToFrac s
   where
     (loLimit, hiLimit) = exponentLimits (undefined :: a)
 
@@ -467,6 +480,39 @@ exponentLimits _ = (loLimit, hiLimit)
       radix    = floatRadix  (undefined :: a)
       digits   = floatDigits (undefined :: a)
       (lo, hi) = floatRange  (undefined :: a)
+
+-- | Convert a `Scientific` to a bounded integer.
+--
+-- If the given `Scientific` doesn't fit in the target representation, it will
+-- return `Nothing`.
+--
+-- This function also guards against computing huge Integer magnitudes (@10^e@)
+-- that could fill up all space and crash your program.
+toBoundedInteger :: forall i. (Integral i, Bounded i) => Scientific -> Maybe i
+toBoundedInteger s
+    | integral  = if dangerouslyBig
+                  then Nothing
+                  else if n < toInteger (minBound :: i) ||
+                          n > toInteger (maxBound :: i)
+                       then Nothing
+                       else Just $ fromInteger n
+    | otherwise = Nothing
+  where
+    integral = e >= 0 || e' >= 0
+
+    e  = base10Exponent s
+    e' = base10Exponent s'
+
+    s' = normalize s
+
+    dangerouslyBig = e > limit &&
+                     e > integerLog10' (max (abs $ toInteger (minBound :: i))
+                                            (abs $ toInteger (maxBound :: i)))
+
+    -- This should not be evaluated if the given Scientific is dangerouslyBig
+    -- since it could consume all space and crash the process:
+    n :: Integer
+    n = toIntegral s'
 
 -- | @floatingOrInteger@ determines if the scientific is floating point
 -- or integer. In case it's floating-point the scientific is converted

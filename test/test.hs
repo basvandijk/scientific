@@ -11,9 +11,11 @@ module Main where
 
 import           Control.Applicative
 import           Control.Monad
+import           Data.Int
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
 import           Test.Tasty.Runners.AntXML
+import           Test.Tasty.HUnit
 import qualified Test.SmallCheck                    as SC
 import qualified Test.SmallCheck.Series             as SC
 import qualified Test.Tasty.SmallCheck              as SC  (testProperty)
@@ -146,6 +148,28 @@ main = testMain $ testGroup "scientific"
              (floatingOrInteger (realToFrac d) :: Either Double Integer) == Left d)
           (\(d::Double) -> genericIsFloating d QC.==>
              (floatingOrInteger (realToFrac d) :: Either Double Integer) == Left d)
+      ]
+    , testGroup "toBoundedInteger"
+      [ testProperty "correct conversion" $ \s ->
+            case toBoundedInteger s :: Maybe Int64 of
+              Just i -> i == (fromIntegral $ (coefficient s') * 10^(base10Exponent s'))
+                where
+                  s' = normalize s
+              Nothing -> isFloating s ||
+                         s < fromIntegral (minBound :: Int64) ||
+                         s > fromIntegral (maxBound :: Int64)
+      ]
+    ]
+  , testGroup "toBoundedInteger"
+    [ testGroup "to Int64" $
+      [ testCase "succ of maxBound" $
+        let i = succ . fromIntegral $ (maxBound :: Int64)
+            s = scientific i 0
+        in (toBoundedInteger s :: Maybe Int64) @?= Nothing
+      , testCase "pred of minBound" $
+        let i = pred . fromIntegral $ (minBound :: Int64)
+            s = scientific i 0
+        in (toBoundedInteger s :: Maybe Int64) @?= Nothing
       ]
     ]
   , testGroup "Predicates"
