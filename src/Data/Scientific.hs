@@ -38,6 +38,11 @@
 -- to @'Integral's@ (like: 'Int') or @'RealFloat's@ (like: 'Double' or 'Float')
 -- will always be bounded by the target type.
 --
+-- /WARNING:/ Although @Scientific@ is an instance of 'Fractional', the methods
+-- are only partially defined! Specifically 'recip' and '/' will diverge when
+-- their outputs have an infinite decimal expansion. 'fromRational' will diverge
+-- when the input 'Rational' has an infinite decimal expansion.
+--
 -- This module is designed to be imported qualified:
 --
 -- @import Data.Scientific as Scientific@
@@ -56,9 +61,9 @@ module Data.Scientific
     , isInteger
 
       -- * Conversions
-    , fromFloatDigits
-    , toRealFloat
     , floatingOrInteger
+    , toRealFloat
+    , fromFloatDigits
 
       -- * Pretty printing
     , formatScientific
@@ -466,6 +471,8 @@ exponentLimits _ = (loLimit, hiLimit)
 -- | @floatingOrInteger@ determines if the scientific is floating point
 -- or integer. In case it's floating-point the scientific is converted
 -- to the desired 'RealFloat' using 'toRealFloat'.
+--
+-- Also see: 'isFloating' or 'isInteger'.
 floatingOrInteger :: (RealFloat r, Integral i) => Scientific -> Either r i
 floatingOrInteger s
     | base10Exponent s  >= 0 = Right (toIntegral   s)
@@ -480,10 +487,14 @@ floatingOrInteger s
 ----------------------------------------------------------------------
 
 -- | Return 'True' if the scientific is a floating point, 'False' otherwise.
+--
+-- Also see: 'floatingOrInteger'.
 isFloating :: Scientific -> Bool
 isFloating = not . isInteger
 
 -- | Return 'True' if the scientific is an integer, 'False' otherwise.
+--
+-- Also see: 'floatingOrInteger'.
 isInteger :: Scientific -> Bool
 isInteger s = base10Exponent s  >= 0 ||
               base10Exponent s' >= 0
@@ -660,13 +671,10 @@ roundTo d is =
 --
 -- then
 --
---      (1) @n >= 1@
---
---      (2) @x = 0.d1d2...dn * (10^^e)@
---
---      (3) @0 <= di <= 9@
---
---      (4) @null $ takeWhile (==0) $ reverse [d1,d2,...,dn]@
+--     1. @n >= 1@
+--     2. @x = 0.d1d2...dn * (10^^e)@
+--     3. @0 <= di <= 9@
+--     4. @null $ takeWhile (==0) $ reverse [d1,d2,...,dn]@
 --
 -- The last property means that the coefficient will be normalized, i.e. doesn't
 -- contain trailing zeros.
