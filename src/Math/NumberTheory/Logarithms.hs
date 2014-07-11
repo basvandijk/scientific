@@ -3,14 +3,22 @@
 -- | Integer logarithm, copied from Daniel Fischer's @arithmoi@
 module Math.NumberTheory.Logarithms ( integerLog10' ) where
 
-import GHC.Base
+import GHC.Base ( Int(I#), Word#, Int#
+                , int2Word#, eqWord#, neWord#, (-#), and#, uncheckedShiftRL#
+                )
 
 #if __GLASGOW_HASKELL__ >= 702
-import GHC.Integer.Logarithms
+import GHC.Integer.Logarithms (integerLog2#, wordLog2#)
 #else
 #include "MachDeps.h"
 
-import GHC.Integer.GMP.Internals
+import GHC.Integer.GMP.Internals (Integer(S#, J#))
+
+import GHC.Base ( indexWordArray#, uncheckedIShiftL#, indexInt8Array#
+                , word2Int#, ByteArray#, newByteArray#, writeInt8Array#
+                , (==#), (<#), (+#), (*#)
+                , unsafeFreezeByteArray#, realWorld#
+                )
 
 #if (WORD_SIZE_IN_BITS != 32) && (WORD_SIZE_IN_BITS != 64)
 #error Only word sizes 32 and 64 are supported.
