@@ -1,5 +1,7 @@
-	* Add the isFloating or isInteger properties.
+	* Add the isFloating or isInteger predicates.
 	  Courtesy of Zejun Wu (@watashi).
+	* Add the toRealFloat' and toBoundedInteger functions.
+	  Courtesy of Fujimura Daisuke (@fujimura).
 
 0.3.2.2
 	* Enable package to link with integer-simple instead of
