@@ -1,6 +1,10 @@
+	* Add the isFloating or isInteger properties.
+	  Courtesy of Zejun Wu (@watashi).
+
 0.3.2.2
 	* Enable package to link with integer-simple instead of
 	  integer-gmp using the -finteger-simple cabal flag.
+	  Courtesy of @k0ral.
 
 0.3.2.1
 
