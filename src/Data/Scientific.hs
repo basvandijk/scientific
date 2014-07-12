@@ -64,7 +64,7 @@ module Data.Scientific
       -- * Conversions
     , floatingOrInteger
     , toRealFloat
-    , toRealFloat'
+    , toBoundedRealFloat
     , toBoundedInteger
     , fromFloatDigits
 
@@ -338,7 +338,7 @@ instance RealFrac Scientific where
 -- space usage is bounded by the target type.
 --
 -- For large negative exponents we check if the exponent is smaller
--- than some limit (currently -1100). In that case we know that the
+-- than some limit (currently -324). In that case we know that the
 -- scientific number is really small (unless the coefficient has many
 -- digits) so we can immediately return -1 for negative scientific
 -- numbers or 0 for positive numbers.
@@ -447,15 +447,15 @@ fromFloatDigits = positivize fromNonNegRealFloat
 --
 -- If the given `Scientific` is too big or too small for the target
 -- representation, Infinity or 0 will be returned respectively. See
--- 'toRealFloat'' which allows you to handle these cases explicitly.
+-- 'toBoundedRealFloat' which allows you to handle these cases explicitly.
 toRealFloat :: (RealFloat a) => Scientific -> a
-toRealFloat = either id id . toRealFloat'
+toRealFloat = either id id . toBoundedRealFloat
 
 -- | Preciser version of `toRealFloat`. If the given `Scientific` is too big or
 -- too small for the target representation, Infinity or 0 will be returned as
 -- `Left`.
-toRealFloat' :: forall a. (RealFloat a) => Scientific -> Either a a
-toRealFloat' s@(Scientific c e)
+toBoundedRealFloat :: forall a. (RealFloat a) => Scientific -> Either a a
+toBoundedRealFloat s@(Scientific c e)
     | e >  limit && e > hiLimit                    = Left  $ sign (1/0) -- Infinity
     | e < -limit && e < loLimit && e + d < loLimit = Left  $ sign 0
     | otherwise                                    = Right $ realToFrac s
