@@ -434,26 +434,24 @@ fromFloatDigits = positivize fromNonNegRealFloat
           go []     !c !n = Scientific c (e - n)
           go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
 
--- | Convert a 'Scientific' number into a 'RealFloat' (like a 'Double'
--- or a 'Float').
+-- | Safely convert a 'Scientific' number into a 'RealFloat' (like a 'Double' or a
+-- 'Float').
 --
--- Note that this function uses 'realToFrac'
--- (@'fromRational' . 'toRational'@) internally but it guards against
--- computing huge Integer magnitudes (@10^e@) that could fill up all
--- space and crash your program.
+-- Note that this function uses 'realToFrac' (@'fromRational' . 'toRational'@)
+-- internally but it guards against computing huge Integer magnitudes (@10^e@)
+-- that could fill up all space and crash your program. If the 'base10Exponent'
+-- of the given 'Scientific' is too big or too small to be represented in the
+-- target type, Infinity or 0 will be returned respectively. Use
+-- 'toBoundedRealFloat' which explicitly handles this case by returning 'Left'.
 --
--- Always prefer 'toRealFloat' over 'realToFrac' when converting from
--- scientific numbers coming from an untrusted source.
---
--- If the given `Scientific` is too big or too small for the target
--- representation, Infinity or 0 will be returned respectively. See
--- 'toBoundedRealFloat' which allows you to handle these cases explicitly.
+-- Always prefer 'toRealFloat' over 'realToFrac' when converting from scientific
+-- numbers coming from an untrusted source.
 toRealFloat :: (RealFloat a) => Scientific -> a
 toRealFloat = either id id . toBoundedRealFloat
 
--- | Preciser version of `toRealFloat`. If the given `Scientific` is too big or
--- too small for the target representation, Infinity or 0 will be returned as
--- `Left`.
+-- | Preciser version of `toRealFloat`. If the 'base10Exponent' of the given
+-- 'Scientific' is too big or too small to be represented in the target type,
+-- Infinity or 0 will be returned as 'Left'.
 toBoundedRealFloat :: forall a. (RealFloat a) => Scientific -> Either a a
 toBoundedRealFloat s@(Scientific c e)
     | e >  limit && e > hiLimit                    = Left  $ sign (1/0) -- Infinity
