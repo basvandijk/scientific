@@ -1,3 +1,4 @@
+0.3.3.0
 	* Add the isFloating or isInteger predicates.
 	  Courtesy of Zejun Wu (@watashi).
 	* Add the toRealFloat' and toBoundedInteger functions.
