@@ -1,3 +1,6 @@
+0.3.3.1
+	*  Allow newer tasty, tasty-hunit and criterion
+
 0.3.3.0
 	* Add the isFloating or isInteger predicates.
 	  Courtesy of Zejun Wu (@watashi).
