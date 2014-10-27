@@ -15,7 +15,7 @@ import           Data.Int
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
 import           Test.Tasty.Runners.AntXML
-import           Test.Tasty.HUnit
+import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion)
 import qualified Test.SmallCheck                    as SC
 import qualified Test.SmallCheck.Series             as SC
 import qualified Test.Tasty.SmallCheck              as SC  (testProperty)
@@ -41,13 +41,18 @@ main = testMain $ testGroup "scientific"
        (QC.forAll normalizedScientificGen    $ \s ->
             s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
 
+  , testGroup "Parsing"
+    [ testCase "reads \"\""     $ testReads ""     []
+    , testCase "reads \"1.\""   $ testReads "1."   [(1.0, ".")]
+    , testCase "reads \"1.2e\"" $ testReads "1.2e" [(1.0, ".2e"), (1.2, "e")]
+    ]
+
   , testGroup "Formatting"
     [ testProperty "read . show == id" $ \s -> read (show s) === s
 
     , smallQuick "toDecimalDigits_laws"
         (SC.over   nonNegativeScientificSeries toDecimalDigits_laws)
         (QC.forAll nonNegativeScientificGen    toDecimalDigits_laws)
-
 
     , testGroup "Builder"
       [ testProperty "Text" $ \s ->
@@ -180,6 +185,9 @@ main = testMain $ testGroup "scientific"
 
 testMain :: TestTree -> IO ()
 testMain = defaultMainWithIngredients (antXMLRunner:defaultIngredients)
+
+testReads :: String -> [(Scientific, String)] -> Assertion
+testReads inp out = reads inp @?= out
 
 genericIsFloating :: RealFrac a => a -> Bool
 genericIsFloating a = fromInteger (floor a :: Integer) /= a

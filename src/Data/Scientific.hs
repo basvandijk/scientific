@@ -588,15 +588,20 @@ scientificP = do
      return (scientific signedCoeff    expnt)
 
 foldDigits :: (a -> Int -> a) -> a -> ReadP a
-foldDigits f z = ReadP.look >>= go z
-    where
-      go !a [] = return a
-      go !a (c:cs)
-          | isDecimal c = do
-              _ <- ReadP.get
-              let digit = ord c - 48
-              go (f a digit) cs
-          | otherwise = return a
+foldDigits f z = do
+    c <- ReadP.satisfy isDecimal
+    let digit = ord c - 48
+        a = f z digit
+
+    ReadP.look >>= go a
+  where
+    go !a [] = return a
+    go !a (c:cs)
+        | isDecimal c = do
+            _ <- ReadP.get
+            let digit = ord c - 48
+            go (f a digit) cs
+        | otherwise = return a
 
 isDecimal :: Char -> Bool
 isDecimal c = c >= '0' && c <= '9'
