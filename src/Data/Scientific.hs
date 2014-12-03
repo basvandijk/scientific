@@ -84,7 +84,7 @@ module Data.Scientific
 ----------------------------------------------------------------------
 
 import           Control.Monad                (mplus)
-import           Control.DeepSeq              (NFData)
+import           Control.DeepSeq              (NFData(rnf))
 import           Data.Array                   (Array, listArray, (!))
 import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
@@ -146,7 +146,8 @@ scientific = Scientific
 -- Instances
 ----------------------------------------------------------------------
 
-instance NFData Scientific
+instance NFData Scientific where
+    rnf (Scientific _ _) = ()
 
 instance Hashable Scientific where
     hashWithSalt salt = hashWithSalt salt . toRational
