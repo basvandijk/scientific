@@ -4,7 +4,7 @@
 
 cabal.mkDerivation (self: {
   pname = "scientific";
-  version = "0.3.3.3";
+  version = "HEAD";
   src = ./.;
   buildDepends = [ deepseq hashable text ];
   testDepends = [
