@@ -1,3 +1,7 @@
+0.3.3.4
+	* Relax upper version bounds of base and deepseq
+	  for the test suite and benchmarks.
+
 0.3.3.3
 	* Add support for `deepseq-1.4`.
 
