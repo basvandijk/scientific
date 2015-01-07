@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -12,6 +13,7 @@ module Main where
 import           Control.Applicative
 import           Control.Monad
 import           Data.Int
+import           Data.Word
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
 import           Test.Tasty.Runners.AntXML
@@ -155,15 +157,16 @@ main = testMain $ testGroup "scientific"
              (floatingOrInteger (realToFrac d) :: Either Double Integer) == Left d)
       ]
     , testGroup "toBoundedInteger"
-      [ testProperty "correct conversion" $ \s ->
-            case toBoundedInteger s :: Maybe Int64 of
-              Just i -> i == (fromIntegral $ (coefficient s') * 10^(base10Exponent s'))
-                where
-                  s' = normalize s
-              Nothing -> isFloating s ||
-                         s < fromIntegral (minBound :: Int64) ||
-                         s > fromIntegral (maxBound :: Int64)
+      [ testGroup "correct conversion"
+        [ testProperty "Int64"       $ toBoundedIntegerConversion (undefined :: Int64)
+        , testProperty "Word64"      $ toBoundedIntegerConversion (undefined :: Word64)
+        , testProperty "NegativeNum" $ toBoundedIntegerConversion (undefined :: NegativeInt)
+        ]
       ]
+    ]
+  , testGroup "toBoundedRealFloat"
+    [ testCase "0 * 10^1000 == 0" $
+        toBoundedRealFloat (scientific 0 1000) @?= Right (0 :: Float)
     ]
   , testGroup "toBoundedInteger"
     [ testGroup "to Int64" $
@@ -175,6 +178,8 @@ main = testMain $ testGroup "scientific"
         let i = pred . fromIntegral $ (minBound :: Int64)
             s = scientific i 0
         in (toBoundedInteger s :: Maybe Int64) @?= Nothing
+      , testCase "0 * 10^1000 == 0" $
+          toBoundedInteger (scientific 0 1000) @?= Just (0 :: Int64)
       ]
     ]
   , testGroup "Predicates"
@@ -216,6 +221,20 @@ conversionsProperties _ =
   -- , testProperty "fromFloatDigits . toRealFloat == id" $ \(s :: Scientific) ->
   --     Scientific.fromFloatDigits (Scientific.toRealFloat s :: realFloat) == s
   ]
+
+toBoundedIntegerConversion
+    :: forall i. (Integral i, Bounded i, Show i)
+    => i -> Scientific -> Bool
+toBoundedIntegerConversion _ s =
+    case toBoundedInteger s :: Maybe i of
+      Just i -> i == (fromIntegral $ (coefficient s') * 10^(base10Exponent s')) &&
+                i >= minBound &&
+                i <= maxBound
+        where
+          s' = normalize s
+      Nothing -> isFloating s ||
+                 s < fromIntegral (minBound :: i) ||
+                 s > fromIntegral (maxBound :: i)
 
 testProperty :: (SC.Testable IO test, QC.Testable test)
              => TestName -> test -> TestTree
@@ -290,6 +309,13 @@ roundDefault x = let (n,r) = properFraction x
                       1  -> m
                       _  -> error "round default defn: Bad value"
 
+newtype NegativeInt = NegativeInt Int
+    deriving (Show, Enum, Eq, Ord, Num, Real, Integral)
+
+instance Bounded NegativeInt where
+    minBound = -100
+    maxBound = -10
+
 ----------------------------------------------------------------------
 -- SmallCheck instances
 ----------------------------------------------------------------------
@@ -312,7 +338,11 @@ normalizedScientificSeries = liftM Scientific.normalize SC.series
 ----------------------------------------------------------------------
 
 instance QC.Arbitrary Scientific where
-    arbitrary = scientific <$> QC.arbitrary <*> intGen
+    arbitrary = QC.frequency
+                  [ (70, scientific <$> QC.arbitrary <*> intGen)
+                  , (20, scientific <$> QC.arbitrary <*> bigIntGen)
+                  , (10, scientific <$> pure 0       <*> bigIntGen)
+                  ]
 
     shrink s = zipWith scientific (QC.shrink $ Scientific.coefficient s)
                                   (QC.shrink $ Scientific.base10Exponent s)
@@ -324,6 +354,9 @@ nonNegativeScientificGen =
 
 normalizedScientificGen :: QC.Gen Scientific
 normalizedScientificGen = Scientific.normalize <$> QC.arbitrary
+
+bigIntGen :: QC.Gen Int
+bigIntGen = QC.sized $ \size -> QC.resize (size * 1000) intGen
 
 intGen :: QC.Gen Int
 #if MIN_VERSION_QuickCheck(2,7,0)

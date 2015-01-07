@@ -455,6 +455,7 @@ toRealFloat = either id id . toBoundedRealFloat
 -- Infinity or 0 will be returned as 'Left'.
 toBoundedRealFloat :: forall a. (RealFloat a) => Scientific -> Either a a
 toBoundedRealFloat s@(Scientific c e)
+    | c == 0                                       = Right 0
     | e >  limit && e > hiLimit                    = Left  $ sign (1/0) -- Infinity
     | e < -limit && e < loLimit && e + d < loLimit = Left  $ sign 0
     | otherwise                                    = Right $ realToFrac s
@@ -489,14 +490,14 @@ exponentLimits _ = (loLimit, hiLimit)
 -- that could fill up all space and crash your program.
 toBoundedInteger :: forall i. (Integral i, Bounded i) => Scientific -> Maybe i
 toBoundedInteger s
+    | c == 0    = fromIntegerBounded 0
     | integral  = if dangerouslyBig
                   then Nothing
-                  else if n < toInteger (minBound :: i) ||
-                          n > toInteger (maxBound :: i)
-                       then Nothing
-                       else Just $ fromInteger n
+                  else fromIntegerBounded n
     | otherwise = Nothing
   where
+    c = coefficient s
+
     integral = e >= 0 || e' >= 0
 
     e  = base10Exponent s
@@ -507,6 +508,12 @@ toBoundedInteger s
     dangerouslyBig = e > limit &&
                      e > integerLog10' (max (abs $ toInteger (minBound :: i))
                                             (abs $ toInteger (maxBound :: i)))
+
+    fromIntegerBounded :: Integer -> Maybe i
+    fromIntegerBounded i
+        | i < toInteger (minBound :: i) ||
+          i > toInteger (maxBound :: i) = Nothing
+        | otherwise = Just $ fromInteger i
 
     -- This should not be evaluated if the given Scientific is dangerouslyBig
     -- since it could consume all space and crash the process:

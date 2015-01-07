@@ -1,3 +1,12 @@
+0.3.3.5
+	* Fixed bug when converting the Scientific:
+	  `scientific 0 someBigExponent` to a bounded Integral using toBoundedInteger
+	  or to a bounded RealFloat using toBoundedRealFloat.
+	  If someBigExponent was big enough to trigger the big-exponent protection
+	  the beforementioned functions didn't return 0.
+
+	  This is fixed by explicitly handling a coefficient of 0.
+
 0.3.3.4
 	* Relax upper version bounds of base and deepseq
 	  for the test suite and benchmarks.
