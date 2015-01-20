@@ -44,9 +44,12 @@ main = testMain $ testGroup "scientific"
             s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
 
   , testGroup "Parsing"
-    [ testCase "reads \"\""     $ testReads ""     []
-    , testCase "reads \"1.\""   $ testReads "1."   [(1.0, ".")]
-    , testCase "reads \"1.2e\"" $ testReads "1.2e" [(1.0, ".2e"), (1.2, "e")]
+    [ testCase "reads \"\""        $ testReads ""        []
+    , testCase "reads \"1.\""      $ testReads "1."      [(1.0, ".")]
+    , testCase "reads \"1.2e\""    $ testReads "1.2e"    [(1.0, ".2e"), (1.2, "e")]
+    , testCase "reads \"(1.3 )\""  $ testReads "(1.3 )"  [(1.3, "")]
+    , testCase "reads \"((1.3))\"" $ testReads "((1.3))" [(1.3, "")]
+    , testCase "reads \" 1.3\""    $ testReads " 1.3"    [(1.0, ".3"), (1.3, "")]
     ]
 
   , testGroup "Formatting"

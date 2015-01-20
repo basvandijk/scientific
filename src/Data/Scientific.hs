@@ -95,7 +95,8 @@ import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
 import           Math.NumberTheory.Logarithms (integerLog10')
 import qualified Numeric                      (floatToDigits)
-import           Text.Read                    (readPrec)
+import qualified Text.Read                       as Read
+import           Text.Read                        (readPrec)
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
 import qualified Text.ParserCombinators.ReadP    as ReadP
 import           Text.ParserCombinators.ReadP     ( ReadP )
@@ -562,7 +563,7 @@ isInteger s = base10Exponent s  >= 0 ||
 ----------------------------------------------------------------------
 
 instance Read Scientific where
-    readPrec = ReadPrec.lift scientificP
+    readPrec = Read.parens $ ReadPrec.lift (ReadP.skipSpaces >> scientificP)
 
 -- A strict pair
 data SP = SP !Integer {-# UNPACK #-}!Int
