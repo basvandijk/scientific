@@ -236,6 +236,9 @@ instance Fractional Scientific where
     recip = fromRational . recip . toRational
     {-# INLINE recip #-}
 
+    x / y = fromRational $ toRational x / toRational y
+    {-# INLINE (/) #-}
+
     fromRational rational = positivize (longDiv 0 0) (numerator rational)
       where
         -- Divide the numerator by the denominator using long division.
