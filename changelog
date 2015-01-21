@@ -1,3 +1,17 @@
+0.3.3.7
+	* Fixed both the
+
+            Prelude Data.Scientific> reads "0.0" :: [(Data.Scientific.Scientific,String)]
+            [(0.0,".0"),(0.0,"")]
+
+          problem and the
+
+            read " 8" :: Scientific fails, while read " 8" :: Double succeeds
+
+	  problem.
+
+	  Courtesy of neongreen.
+
 0.3.3.6
 	* Fixed bug in the x / y method for Scientific. Since I was using
 	  the default implementation: `x * recip y` the operation would
