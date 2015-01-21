@@ -584,7 +584,7 @@ scientificP = do
                                  SP (step a digit) (e-1)) s
 
   SP coeff expnt <- (ReadP.satisfy (== '.') >> fractional)
-                      `mplus` return s
+                    ReadP.<++ return s
 
   let signedCoeff | pos       =   coeff
                   | otherwise = (-coeff)
