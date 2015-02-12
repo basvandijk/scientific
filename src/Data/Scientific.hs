@@ -666,7 +666,7 @@ formatAsInt scntfc@(Scientific _ c _)
     doFmt :: ([Int], Int) -> String
     doFmt (is, e)
       | e <= 0  = "0"
-      | otherwise = (map intToDigit $ take e is) ++ (take (e - length is) $ repeat '0')
+      | otherwise = (map intToDigit $ take e is) ++ (replicate (e - length is) '0')
 
 
 -- | Like 'show' but provides rendering options.
