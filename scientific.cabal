@@ -1,5 +1,5 @@
 name:                scientific
-version:             0.3.3.7
+version:             0.3.3.8
 synopsis:            Numbers represented using scientific notation
 description:
   @Data.Scientific@ provides a space efficient and arbitrary precision
@@ -99,7 +99,7 @@ test-suite test-scientific
                , tasty-smallcheck >= 0.2   && < 0.9
                , tasty-quickcheck >= 0.8   && < 0.9
                , smallcheck       >= 1.0   && < 1.2
-               , QuickCheck       >= 2.5   && < 2.8
+               , QuickCheck       >= 2.5   && < 2.9
                , text             >= 0.8   && < 1.3
                , bytestring       >= 0.10  && < 0.11
 
