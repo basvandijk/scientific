@@ -3,6 +3,10 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+#ifdef GENERICS
+{-# LANGUAGE DeriveGeneric #-}
+#endif
+
 -- |
 -- Module      :  Data.Scientific
 -- Copyright   :  Bas van Dijk 2013
@@ -113,6 +117,10 @@ import           Data.Bits                    (unsafeShiftR)
 import           Data.Bits                    (shiftR)
 #endif
 
+#ifdef GENERICS
+import           GHC.Generics ( Generic )
+#endif
+
 
 ----------------------------------------------------------------------
 -- Type
@@ -172,7 +180,12 @@ data DisplayMode =
                     --   and scientific notation otherwise.
   | DisplayExponent -- ^ Always display in scientific notation (e.g. 2.3e123),
                     --   equivalent to @printf %e@.
-  deriving (Eq, Ord, Show, Typeable, Data)
+  deriving ( Eq, Ord, Bounded, Enum, Show, Read, Typeable, Data
+#ifdef GENERICS
+           , Generic
+#endif
+           )
+
 
 -- | @scientific c e@ constructs a scientific number which corresponds
 -- to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@.

@@ -83,6 +83,8 @@ library
   if flag(bytestring-builder)
     exposed-modules:   Data.ByteString.Builder.Scientific
     build-depends:     bytestring  >= 0.10  && < 0.11
+  if impl(ghc >= 7.2.1)
+    cpp-options: -DGENERICS
 
 test-suite test-scientific
   type:             exitcode-stdio-1.0
