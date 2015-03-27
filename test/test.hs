@@ -25,14 +25,17 @@ import qualified Test.QuickCheck                    as QC
 import qualified Test.Tasty.QuickCheck              as QC  (testProperty)
 import qualified Data.Text.Lazy                     as TL  (unpack)
 import qualified Data.Text.Lazy.Builder             as TLB (toLazyText)
+import qualified Data.Text.Lazy.Builder.Scientific  as T
+
+#ifdef BYTESTRING_BUILDER
 import qualified Data.ByteString.Lazy.Char8         as BLC8
 import qualified Data.ByteString.Builder.Scientific as B
-import qualified Data.Text.Lazy.Builder.Scientific  as T
 
 #if !MIN_VERSION_bytestring(0,10,2)
 import qualified Data.ByteString.Lazy.Builder       as B
 #else
 import qualified Data.ByteString.Builder            as B
+#endif
 #endif
 
 main :: IO ()
@@ -61,16 +64,20 @@ main = testMain $ testGroup "scientific"
 
     , testGroup "Builder"
       [ testProperty "Text" $ \s ->
-          formatScientific B.Generic Nothing s ==
-          TL.unpack (TLB.toLazyText $ T.formatScientificBuilder B.Generic Nothing s)
+          formatScientific Scientific.Generic Nothing s ==
+          TL.unpack (TLB.toLazyText $
+                       T.formatScientificBuilder Scientific.Generic Nothing s)
 
+#ifdef BYTESTRING_BUILDER
       , testProperty "ByteString" $ \s ->
-          formatScientific B.Generic Nothing s ==
-          BLC8.unpack (B.toLazyByteString $ B.formatScientificBuilder B.Generic Nothing s)
+          formatScientific Scientific.Generic Nothing s ==
+          BLC8.unpack (B.toLazyByteString $
+                        B.formatScientificBuilder Scientific.Generic Nothing s)
+#endif
       ]
 
     , testProperty "formatScientific_fromFloatDigits" $ \(d::Double) ->
-        formatScientific B.Generic Nothing (Scientific.fromFloatDigits d) ==
+        formatScientific Scientific.Generic Nothing (Scientific.fromFloatDigits d) ==
         show d
 
     -- , testProperty "formatScientific_realToFrac" $ \(d::Double) ->
