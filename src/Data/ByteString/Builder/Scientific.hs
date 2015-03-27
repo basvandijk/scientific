@@ -6,7 +6,7 @@ module Data.ByteString.Builder.Scientific
     , FPFormat(..)
     ) where
 
-import           Data.Scientific   (Scientific)
+import           Data.Scientific   (Scientific,SciencificDisplay(..))
 import qualified Data.Scientific as Scientific
 
 import Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
@@ -38,7 +38,24 @@ infixr 6 <>
 -- absolute value lies between @0.1@ and @9,999,999@, and scientific
 -- notation otherwise.
 scientificBuilder :: Scientific -> Builder
-scientificBuilder = formatScientificBuilder Generic Nothing
+scientificBuilder scntfc
+  | Scientific.displayMode scntfc == ScDisplayInt = formatIntBuilder scntfc
+  | otherwise   = formatScientificBuilder (mode $ Scientific.displayMode scntfc) Nothing scntfc
+    where mode ScDisplayInt = Fixed -- not used for completeness
+          mode ScDisplayFixed = Fixed
+          mode ScDisplayGeneric = Generic
+          mode ScDisplayExponent = Exponent
+
+formatIntBuilder :: Scientific
+  -> Builder
+formatIntBuilder scntfc
+   | scntfc < 0 = char8 '-' <> doFmt (Scientific.toDecimalDigits (-scntfc))
+   | otherwise  =              doFmt (Scientific.toDecimalDigits   scntfc )
+  where
+    doFmt :: ([Int], Int) -> Builder
+    doFmt (is, e)
+      | e <= 0  = char8 '0'
+      | otherwise = string8 (map i2d $ take e is) <> string8 (replicate (e - length is) '0')
 
 -- | Like 'scientificBuilder' but provides rendering options.
 formatScientificBuilder :: FPFormat

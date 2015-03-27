@@ -189,6 +189,19 @@ main = testMain $ testGroup "scientific"
     [ testProperty "isFloating" $ \s -> isFloating s ==      genericIsFloating s
     , testProperty "isInteger"  $ \s -> isInteger  s == not (genericIsFloating s)
     ]
+  , testGroup "Display Mode Order"
+    [ QC.testProperty "highest is exponent" $ \s -> max ScDisplayExponent s == ScDisplayExponent
+    , QC.testProperty "lowest is int" $ \s -> min ScDisplayInt s == ScDisplayInt
+    ]
+  , testGroup "Display Mode Accessors"
+    [ QC.testProperty "set , get" $ \s -> displayMode ( setDisplayMode (scientific 234 10) s) == s
+    ]
+  , testGroup "Display Mode Integer"
+    [ QC.testProperty "large int - pad zeros" $ QC.forAll (QC.elements [0..10]) (\s -> ((show $ scientificDisp ScDisplayInt 23456 s)++".0") == (formatScientific Fixed Nothing $ scientific 23456 s ))
+    , QC.testProperty "medium int - truncate" $ QC.forAll (QC.elements [(-4)..(0)]) (\s -> ((show $ scientificDisp ScDisplayInt 23456 s)) == take (5+s) "23456" )
+    , QC.testProperty "small values = 0 " $ QC.forAll (QC.elements [5..20]) (\s -> ((show $ scientificDisp ScDisplayInt 23456 (-s))) == "0")
+
+    ]
   ]
 
 testMain :: TestTree -> IO ()
@@ -349,6 +362,9 @@ instance QC.Arbitrary Scientific where
 
     shrink s = zipWith scientific (QC.shrink $ Scientific.coefficient s)
                                   (QC.shrink $ Scientific.base10Exponent s)
+
+instance QC.Arbitrary SciencificDisplay where
+    arbitrary = QC.elements [ScDisplayInt,ScDisplayFixed,ScDisplayGeneric,ScDisplayExponent]
 
 nonNegativeScientificGen :: QC.Gen Scientific
 nonNegativeScientificGen =
