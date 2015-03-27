@@ -510,14 +510,15 @@ toBoundedInteger s
     s' = normalize s
 
     dangerouslyBig = e > limit &&
-                     e > integerLog10' (max (abs $ toInteger (minBound :: i))
-                                            (abs $ toInteger (maxBound :: i)))
+                     e > integerLog10' (max (abs iMinBound) (abs iMaxBound))
 
     fromIntegerBounded :: Integer -> Maybe i
     fromIntegerBounded i
-        | i < toInteger (minBound :: i) ||
-          i > toInteger (maxBound :: i) = Nothing
-        | otherwise = Just $ fromInteger i
+        | i < iMinBound || i > iMaxBound = Nothing
+        | otherwise                      = Just $ fromInteger i
+
+    iMinBound = toInteger (minBound :: i)
+    iMaxBound = toInteger (maxBound :: i)
 
     -- This should not be evaluated if the given Scientific is dangerouslyBig
     -- since it could consume all space and crash the process:
