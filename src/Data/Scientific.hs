@@ -238,23 +238,23 @@ instance Ord Scientific where
 -- set the 'DisplayMode' to 'DisplayInteger'.
 instance Num Scientific where
     Scientific d1 c1 e1 + Scientific d2 c2 e2
-       | e1 < e2   = scientificWithDisplayMode (max d1 d2) (c1   + c2*l) e1
-       | otherwise = scientificWithDisplayMode (max d1 d2) (c1*r + c2  ) e2
+       | e1 < e2   = Scientific (max d1 d2) (c1   + c2*l) e1
+       | otherwise = Scientific (max d1 d2) (c1*r + c2  ) e2
          where
            l = magnitude (e2 - e1)
            r = magnitude (e1 - e2)
     {-# INLINE (+) #-}
 
     Scientific d1 c1 e1 - Scientific d2 c2 e2
-       | e1 < e2   = scientificWithDisplayMode (max d1 d2) (c1   - c2*l) e1
-       | otherwise = scientificWithDisplayMode (max d1 d2) (c1*r - c2  ) e2
+       | e1 < e2   = Scientific (max d1 d2) (c1   - c2*l) e1
+       | otherwise = Scientific (max d1 d2) (c1*r - c2  ) e2
          where
            l = magnitude (e2 - e1)
            r = magnitude (e1 - e2)
     {-# INLINE (-) #-}
 
     Scientific d1 c1 e1 * Scientific d2 c2 e2 =
-        scientificWithDisplayMode (max d1 d2) (c1 * c2) (e1 + e2)
+        Scientific (max d1 d2) (c1 * c2) (e1 + e2)
     {-# INLINE (*) #-}
 
     abs (Scientific d c e) = Scientific d (abs c) e
@@ -266,7 +266,7 @@ instance Num Scientific where
     signum (Scientific d c _) = Scientific d (signum c) 0
     {-# INLINE signum #-}
 
-    fromInteger i = scientificWithDisplayMode DisplayInteger i 0
+    fromInteger i = Scientific DisplayInteger i 0
     {-# INLINE fromInteger #-}
 
 -- | /WARNING:/ 'toRational' needs to compute the 'Integer' magnitude:
@@ -304,7 +304,7 @@ instance Fractional Scientific where
       where
         -- Divide the numerator by the denominator using long division.
         longDiv :: Integer -> Int -> (Integer -> Scientific)
-        longDiv !c !e  0 = scientificWithDisplayMode DisplayGeneric c e
+        longDiv !c !e  0 = Scientific DisplayGeneric c e
         longDiv !c !e !n
                           -- TODO: Use a logarithm here!
             | n < d     = longDiv (c * 10) (e - 1) (n * 10)
@@ -326,7 +326,7 @@ instance RealFrac Scientific where
         | e < 0     = if dangerouslySmall c e
                       then (0, s)
                       else let (q, r) = c `quotRem` magnitude (-e)
-                           in (fromInteger q, scientificWithDisplayMode d r e)
+                           in (fromInteger q, Scientific d r e)
         | otherwise = (toIntegral s, 0)
     {-# INLINE properFraction #-}
 
@@ -347,7 +347,7 @@ instance RealFrac Scientific where
                        n = fromInteger q
                        m = if r < 0 then n - 1 else n + 1
                        d = DisplayGeneric
-                       f = scientificWithDisplayMode d r e
+                       f = Scientific d r e
                    in case signum $ coefficient $ abs f - 0.5 of
                         -1 -> n
                         0  -> if even n then n else m
@@ -660,8 +660,8 @@ scientificP = do
       d = DisplayGeneric
 
   (ReadP.satisfy isE >>
-           ((scientificWithDisplayMode d signedCoeff . (expnt +)) <$> eP)) `mplus`
-     return (scientificWithDisplayMode d signedCoeff    expnt)
+           ((Scientific d signedCoeff . (expnt +)) <$> eP)) `mplus`
+     return (Scientific d signedCoeff    expnt)
 
 
 foldDigits :: (a -> Int -> a) -> a -> ReadP a
