@@ -824,7 +824,7 @@ toDecimalDigits :: Scientific -> ([Int], Int)
 toDecimalDigits (Scientific _ 0  _)  = ([0], 0)
 toDecimalDigits (Scientific _ c' e') = (is,  n + e)
   where
-    Scientific _ c e = normalizePositive c' e'
+    (c, e) = normalizePositive c' e'
 
     (is, n) = reverseAndLength $ digits c
 
@@ -852,11 +852,11 @@ toDecimalDigits (Scientific _ c' e') = (is,  n + e)
 -- automatically normalized when pretty-printed and in 'toDecimalDigits'.
 normalize :: Scientific -> Scientific
 normalize (Scientific d c e)
-    | c < 0 = -(normalizePositive (-c) e)
-    | c > 0 =   normalizePositive   c  e
+    | c < 0 = case normalizePositive (-c) e of (c', e') -> Scientific d (-c') e'
+    | c > 0 = case normalizePositive   c  e of (c', e') -> Scientific d   c'  e'
     | otherwise {- c == 0 -} = Scientific d 0 0
 
-normalizePositive :: Integer -> Int -> Scientific
+normalizePositive :: Integer -> Int -> (Integer, Int)
 normalizePositive c !e = case quotRem c 10 of
-                           (q, 0) -> normalizePositive q (e+1)
-                           _      -> Scientific DisplayGeneric c e --TODO determine display type
+                           (c', 0) -> normalizePositive c' (e+1)
+                           _       -> (c, e)
