@@ -24,21 +24,16 @@ import Data.Monoid                  (Monoid, mappend)
 infixr 6 <>
 #endif
 
--- | A @Text@ @Builder@ which renders a scientific number to full
--- precision, using standard decimal notation for arguments whose
--- absolute value lies between @0.1@ and @9,999,999@, and scientific
--- notation otherwise.
+-- | A @Text@ @Builder@ which renders a scientific number according to
+-- its 'DisplayMode'.
 scientificBuilder :: Scientific -> Builder
-scientificBuilder scntfc
-  | Scientific.displayMode scntfc == DisplayInteger = formatIntBuilder scntfc
-  | otherwise   = formatScientificBuilder (mode $ Scientific.displayMode scntfc) Nothing scntfc
-    where mode DisplayInteger  = Fixed -- not used for completeness
-          mode DisplayFixed    = Fixed
-          mode DisplayGeneric  = Generic
-          mode DisplayExponent = Exponent
+scientificBuilder s = case Scientific.displayMode s of
+                        DisplayInteger  -> formatIntBuilder s
+                        DisplayFixed    -> formatScientificBuilder Fixed    Nothing s
+                        DisplayGeneric  -> formatScientificBuilder Generic  Nothing s
+                        DisplayExponent -> formatScientificBuilder Exponent Nothing s
 
-formatIntBuilder :: Scientific
-  -> Builder
+formatIntBuilder :: Scientific -> Builder
 formatIntBuilder scntfc
    | scntfc < 0 = singleton '-' <> doFmt (Scientific.toDecimalDigits (-scntfc))
    | otherwise  =                  doFmt (Scientific.toDecimalDigits   scntfc )
