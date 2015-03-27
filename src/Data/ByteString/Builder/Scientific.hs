@@ -6,7 +6,7 @@ module Data.ByteString.Builder.Scientific
     , FPFormat(..)
     ) where
 
-import           Data.Scientific   (Scientific,SciencificDisplay(..))
+import           Data.Scientific   (Scientific, DisplayMode(..))
 import qualified Data.Scientific as Scientific
 
 import Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
@@ -39,12 +39,12 @@ infixr 6 <>
 -- notation otherwise.
 scientificBuilder :: Scientific -> Builder
 scientificBuilder scntfc
-  | Scientific.displayMode scntfc == ScDisplayInt = formatIntBuilder scntfc
+  | Scientific.displayMode scntfc == DisplayInteger = formatIntBuilder scntfc
   | otherwise   = formatScientificBuilder (mode $ Scientific.displayMode scntfc) Nothing scntfc
-    where mode ScDisplayInt = Fixed -- not used for completeness
-          mode ScDisplayFixed = Fixed
-          mode ScDisplayGeneric = Generic
-          mode ScDisplayExponent = Exponent
+    where mode DisplayInteger  = Fixed -- not used for completeness
+          mode DisplayFixed    = Fixed
+          mode DisplayGeneric  = Generic
+          mode DisplayExponent = Exponent
 
 formatIntBuilder :: Scientific
   -> Builder
