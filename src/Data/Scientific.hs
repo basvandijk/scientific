@@ -1,5 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+#if __GLASGOW_HASKELL__>=702
+{-# LANGUAGE DeriveGeneric #-}
+#endif
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -102,6 +105,10 @@ import qualified Text.ParserCombinators.ReadP    as ReadP
 import           Text.ParserCombinators.ReadP     ( ReadP )
 import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 
+#if __GLASGOW_HASKELL__>=702
+import           GHC.Generics                 (Generic)
+#endif
+
 #if MIN_VERSION_base(4,5,0)
 import           Data.Bits                    (unsafeShiftR)
 #else
@@ -135,7 +142,13 @@ data Scientific = Scientific
 
     , base10Exponent :: {-# UNPACK #-} !Int
       -- ^ The base-10 exponent of a scientific number.
-    } deriving (Typeable, Data)
+    } deriving
+    ( Typeable
+    , Data
+#if __GLASGOW_HASKELL__>=702
+    , Generic
+#endif
+    )
 
 -- | @scientific c e@ constructs a scientific number which corresponds
 -- to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@.
