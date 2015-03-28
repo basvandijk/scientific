@@ -28,20 +28,23 @@ infixr 6 <>
 -- its 'DisplayMode'.
 scientificBuilder :: Scientific -> Builder
 scientificBuilder s = case Scientific.displayMode s of
-                        DisplayInteger  -> formatIntBuilder s
+                        DisplayInteger  -> formatIntegerBuilder s
                         DisplayFixed    -> formatScientificBuilder Fixed    Nothing s
                         DisplayGeneric  -> formatScientificBuilder Generic  Nothing s
                         DisplayExponent -> formatScientificBuilder Exponent Nothing s
 
-formatIntBuilder :: Scientific -> Builder
-formatIntBuilder scntfc
-   | scntfc < 0 = singleton '-' <> doFmt (Scientific.toDecimalDigits (-scntfc))
-   | otherwise  =                  doFmt (Scientific.toDecimalDigits   scntfc )
+formatIntegerBuilder :: Scientific -> Builder
+formatIntegerBuilder scntfc
+   | scntfc < 0 = singleton '-' <> doFmt (Scientific.toDecimalDigits' (-scntfc))
+   | otherwise  =                  doFmt (Scientific.toDecimalDigits'   scntfc )
   where
-    doFmt :: ([Int], Int) -> Builder
-    doFmt (is, e)
-      | e <= 0  = singleton '0'
-      | otherwise = fromString (map i2d $ take e is) <> fromString (replicate (e - length is) '0')
+    doFmt :: ([Int], Int, Int) -> Builder
+    doFmt (is, n, se)
+        | e <= 0    = singleton '0'
+        | otherwise = fromString (map i2d $ take e is) <>
+                      fromString (replicate se '0')
+      where
+        e = n + se
 
 -- | Like 'scientificBuilder' but provides rendering options.
 formatScientificBuilder :: FPFormat

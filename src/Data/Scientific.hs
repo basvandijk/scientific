@@ -82,6 +82,7 @@ module Data.Scientific
     , FPFormat(..)
 
     , toDecimalDigits
+    , toDecimalDigits'
 
       -- * Normalization
     , normalize
@@ -185,7 +186,6 @@ data DisplayMode =
            , Generic
 #endif
            )
-
 
 -- | @scientific c e@ constructs a scientific number which corresponds
 -- to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@.
@@ -495,9 +495,8 @@ fromFloatDigits = positivize fromPositiveRealFloat
       fromPositiveRealFloat r = go digits 0 0
         where
           (digits, e) = Numeric.floatToDigits 10 r
-          disp = DisplayGeneric
 
-          go []     !c !n = Scientific disp c (e - n)
+          go []     !c !n = Scientific DisplayGeneric c (e - n)
           go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
 
 -- | Safely convert a 'Scientific' number into a 'RealFloat' (like a 'Double' or a
@@ -701,20 +700,23 @@ isE c = c == 'e' || c == 'E'
 -- using the specified 'DisplayMode'.
 instance Show Scientific where
     show s = case displayMode s of
-               DisplayInteger  -> formatAsInt s
+               DisplayInteger  -> formatAsInteger s
                DisplayFixed    -> formatScientific Fixed    Nothing s
                DisplayGeneric  -> formatScientific Generic  Nothing s
                DisplayExponent -> formatScientific Exponent Nothing s
 
-formatAsInt :: Scientific -> String
-formatAsInt scntfc@(Scientific _ c _)
-   | c < 0     = '-':doFmt (toDecimalDigits (-scntfc))
-   | otherwise =     doFmt (toDecimalDigits   scntfc )
+formatAsInteger :: Scientific -> String
+formatAsInteger scntfc@(Scientific _ c _)
+   | c < 0     = '-':doFmt (toDecimalDigits' (-scntfc))
+   | otherwise =     doFmt (toDecimalDigits'   scntfc )
   where
-    doFmt :: ([Int], Int) -> String
-    doFmt (is, e)
-      | e <= 0    = "0"
-      | otherwise = map intToDigit (take e is) ++ replicate (e - length is) '0'
+    doFmt :: ([Int], Int, Int) -> String
+    doFmt (is, n, se)
+        | e <= 0    = "0"
+        | otherwise = map intToDigit (take e is) ++
+                      replicate se '0'
+      where
+        e = n + se
 
 -- | Like 'show' but provides rendering options.
 formatScientific :: FPFormat
@@ -806,7 +808,7 @@ roundTo d is =
 ----------------------------------------------------------------------
 
 -- | Similar to 'Numeric.floatToDigits', @toDecimalDigits@ takes a
--- non-negative 'Scientific' number, and returns a list of digits and
+-- positive 'Scientific' number, and returns a list of digits and
 -- a base-10 exponent. In particular, if @x>=0@, and
 --
 -- > toDecimalDigits x = ([d1,d2,...,dn], e)
@@ -821,18 +823,29 @@ roundTo d is =
 -- The last property means that the coefficient will be normalized, i.e. doesn't
 -- contain trailing zeros.
 toDecimalDigits :: Scientific -> ([Int], Int)
-toDecimalDigits (Scientific _ 0  _)  = ([0], 0)
-toDecimalDigits (Scientific _ c' e') = (is,  n + e)
+toDecimalDigits s = case toDecimalDigits' s of (is, n, e) -> (is, n + e)
+
+-- | @toDecimalDigits'@ relates to 'toDecimalDigits' as follows:
+--
+-- @
+-- toDecimalDigits s = (is, n + e)
+--   where
+--     (is, n, e) = toDecimalDigits' s
+-- @
+--
+-- * @n@ is the length of the list of digits @is@.
+--
+-- * @e@ is the @'normalize'd@ 'base10Exponent' of @s@.
+toDecimalDigits' :: Scientific -> ([Int], Int, Int)
+toDecimalDigits' (Scientific _ 0  _)  = ([0], 1, 0)
+toDecimalDigits' (Scientific _ c' e') =
+    case normalizePositive c' e' of
+      (c, e) -> case reverseAndLength $ digits c of
+                  (is, n) -> (is, n, e)
   where
-    (c, e) = normalizePositive c' e'
-
-    (is, n) = reverseAndLength $ digits c
-
     digits :: Integer -> [Int]
     digits 0 = []
-    digits i = fromIntegral r : digits q
-      where
-        (q, r) = i `quotRem` 10
+    digits i = case i `quotRem` 10 of (q, r) -> fromIntegral r : digits q
 
     reverseAndLength :: [a] -> ([a], Int)
     reverseAndLength l = rev l [] 0
@@ -847,6 +860,8 @@ toDecimalDigits (Scientific _ c' e') = (is,  n + e)
 
 -- | Normalize a scientific number by dividing out powers of 10 from the
 -- 'coefficient' and incrementing the 'base10Exponent' each time.
+--
+-- The 'DisplayMode' will remain unaffected.
 --
 -- You should rarely have a need for this function since scientific numbers are
 -- automatically normalized when pretty-printed and in 'toDecimalDigits'.

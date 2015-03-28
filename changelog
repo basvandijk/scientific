@@ -25,6 +25,17 @@
 	    the display mode to DisplayInteger. This makes aeson automatically
 	    encode integrals as integers.
 
+	  + toDecimalDigits' :: Scientific -> ([Int], Int, Int)
+	    toDecimalDigits' relates to toDecimalDigits as follows:
+
+              toDecimalDigits s = (is, n + e)
+                where
+                  (is, n, e) = toDecimalDigits' s
+
+	    * n is the length of the list of digits is.
+
+	    * e is the normalized base10Exponent of s.
+
 	  Courtesy of trilogysci.
 
 0.3.3.8
