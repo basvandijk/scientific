@@ -874,8 +874,8 @@ toDecimalDigits' (Scientific _ c' e') =
 -- automatically normalized when pretty-printed and in 'toDecimalDigits'.
 normalize :: Scientific -> Scientific
 normalize (Scientific d c e)
-    | c < 0 = case normalizePositive (-c) e of (c', e') -> Scientific d (-c') e'
     | c > 0 = case normalizePositive   c  e of (c', e') -> Scientific d   c'  e'
+    | c < 0 = case normalizePositive (-c) e of (c', e') -> Scientific d (-c') e'
     | otherwise {- c == 0 -} = Scientific d 0 0
 
 normalizePositive :: Integer -> Int -> (Integer, Int)
