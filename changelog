@@ -1,4 +1,6 @@
 0.3.4.0
+	* Various performance improvements.
+
 	* Allow setting the DisplayMode of a Scientific number. This
 	  controls how the scientific is rendered.
 

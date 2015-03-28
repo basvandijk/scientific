@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnboxedTuples #-}
 
 #ifdef GENERICS
 {-# LANGUAGE DeriveGeneric #-}
@@ -93,6 +94,7 @@ module Data.Scientific
 -- Imports
 ----------------------------------------------------------------------
 
+import           Control.Exception            (throw, ArithException(DivideByZero))
 import           Control.Monad                (mplus)
 import           Control.DeepSeq              (NFData(rnf))
 import           Data.Array                   (Array, listArray, (!))
@@ -121,6 +123,8 @@ import           Data.Bits                    (shiftR)
 #ifdef GENERICS
 import           GHC.Generics ( Generic )
 #endif
+
+import GHC.Integer (quotRemInteger, divInteger, quotInteger)
 
 
 ----------------------------------------------------------------------
@@ -300,7 +304,9 @@ instance Fractional Scientific where
     x / y = fromRational $ toRational x / toRational y
     {-# INLINE (/) #-}
 
-    fromRational rational = positivize (longDiv 0 0) (numerator rational)
+    fromRational rational
+        | d == 0    = throw DivideByZero
+        | otherwise = positivize (longDiv 0 0) (numerator rational)
       where
         -- Divide the numerator by the denominator using long division.
         longDiv :: Integer -> Int -> (Integer -> Scientific)
@@ -308,9 +314,8 @@ instance Fractional Scientific where
         longDiv !c !e !n
                           -- TODO: Use a logarithm here!
             | n < d     = longDiv (c * 10) (e - 1) (n * 10)
-            | otherwise = longDiv (c + q)   e      r
-                            where
-                              (q, r) = n `quotRem` d
+            | otherwise = case n `quotRemInteger` d of
+                            (#q, r#) -> longDiv (c + q) e r
 
         d = denominator rational
 
@@ -325,8 +330,8 @@ instance RealFrac Scientific where
     properFraction s@(Scientific d c e)
         | e < 0     = if dangerouslySmall c e
                       then (0, s)
-                      else let (q, r) = c `quotRem` magnitude (-e)
-                           in (fromInteger q, Scientific d r e)
+                      else case c `quotRemInteger` magnitude (-e) of
+                             (#q, r#) -> (fromInteger q, Scientific d r e)
         | otherwise = (toIntegral s, 0)
     {-# INLINE properFraction #-}
 
@@ -335,7 +340,7 @@ instance RealFrac Scientific where
     truncate = whenFloating $ \c e ->
                  if dangerouslySmall c e
                  then 0
-                 else fromInteger $ c `quot` magnitude (-e)
+                 else fromInteger $ c `quotInteger` magnitude (-e)
     {-# INLINE truncate #-}
 
     -- | @'round' s@ returns the nearest integer to @s@;
@@ -343,11 +348,11 @@ instance RealFrac Scientific where
     round = whenFloating $ \c e ->
               if dangerouslySmall c e
               then 0
-              else let (q, r) = c `quotRem` magnitude (-e)
+              else let (#q, r#) = c `quotRemInteger` magnitude (-e)
                        n = fromInteger q
-                       m = if r < 0 then n - 1 else n + 1
-                       d = DisplayGeneric
-                       f = Scientific d r e
+                       m | r < 0     = n - 1
+                         | otherwise = n + 1
+                       f = Scientific DisplayGeneric r e
                    in case signum $ coefficient $ abs f - 0.5 of
                         -1 -> n
                         0  -> if even n then n else m
@@ -361,8 +366,9 @@ instance RealFrac Scientific where
                 then if c <= 0
                      then 0
                      else 1
-                else let (q, r) = c `quotRem` magnitude (-e)
-                     in fromInteger $! if r <= 0 then q else q + 1
+                else case c `quotRemInteger` magnitude (-e) of
+                       (#q, r#) | r <= 0    -> fromInteger q
+                                | otherwise -> fromInteger (q + 1)
     {-# INLINE ceiling #-}
 
     -- | @'floor' s@ returns the greatest integer not greater than @s@
@@ -371,7 +377,7 @@ instance RealFrac Scientific where
               then if c < 0
                    then -1
                    else 0
-              else fromInteger (c `div` magnitude (-e))
+              else fromInteger (c `divInteger` magnitude (-e))
     {-# INLINE floor #-}
 
 
@@ -845,7 +851,8 @@ toDecimalDigits' (Scientific _ c' e') =
   where
     digits :: Integer -> [Int]
     digits 0 = []
-    digits i = case i `quotRem` 10 of (q, r) -> fromIntegral r : digits q
+    digits i = case i `quotRemInteger` 10 of
+                 (#q, r#) -> fromIntegral r : digits q
 
     reverseAndLength :: [a] -> ([a], Int)
     reverseAndLength l = rev l [] 0
@@ -872,6 +879,6 @@ normalize (Scientific d c e)
     | otherwise {- c == 0 -} = Scientific d 0 0
 
 normalizePositive :: Integer -> Int -> (Integer, Int)
-normalizePositive c !e = case quotRem c 10 of
-                           (c', 0) -> normalizePositive c' (e+1)
-                           _       -> (c, e)
+normalizePositive c !e = case quotRemInteger c 10 of
+                           (#c', 0#) -> normalizePositive c' (e+1)
+                           _         -> (c, e)
