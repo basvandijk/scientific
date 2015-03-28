@@ -96,8 +96,8 @@ module Data.Scientific
 
 import           Control.Exception            (throw, ArithException(DivideByZero))
 import           Control.Monad                (mplus)
+import           Control.Monad.ST             (runST)
 import           Control.DeepSeq              (NFData(rnf))
-import           Data.Array                   (Array, listArray, (!))
 import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
 import           Data.Function                (on)
@@ -105,6 +105,8 @@ import           Data.Functor                 ((<$>))
 import           Data.Hashable                (Hashable(..))
 import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
+import qualified Data.Vector         as V
+import qualified Data.Vector.Mutable as VM
 import           Math.NumberTheory.Logarithms (integerLog10')
 import qualified Numeric                      (floatToDigits)
 import qualified Text.Read                       as Read
@@ -454,26 +456,35 @@ toIntegral (Scientific _ c e) = fromInteger c * magnitude e
 maxExpt :: Int
 maxExpt = 324
 
-expts10 :: Array Int Integer
-expts10 = listArray (0, maxExpt) $ 1 : 10 : go 2
-    where
-      go :: Int -> [Integer]
-      go !ix = xx : 10*xx : go (ix+2)
+expts10 :: V.Vector Integer
+expts10 = runST $ do
+    mv <- VM.unsafeNew maxExpt
+    VM.unsafeWrite mv 0  1
+    VM.unsafeWrite mv 1 10
+    let go !ix
+          | ix == maxExpt = V.unsafeFreeze mv
+          | otherwise = do
+              VM.unsafeWrite mv  ix        xx
+              VM.unsafeWrite mv (ix+1) (10*xx)
+              go (ix+2)
           where
             xx = x * x
-            x  = expts10 ! half
+            x  = V.unsafeIndex expts10 half
 #if MIN_VERSION_base(4,5,0)
             half = ix `unsafeShiftR` 1
 #else
             half = ix `shiftR` 1
 #endif
+    go 2
 
 -- | @magnitude e == 10 ^ e@
 magnitude :: (Num a) => Int -> a
-magnitude e | e <= maxExpt = cachedPow10 e
-            | otherwise    = cachedPow10 maxExpt * 10 ^ (e - maxExpt)
+magnitude e | e < maxExpt = cachedPow10 e
+            | otherwise   = cachedPow10 hi * 10 ^ (e - hi)
     where
-      cachedPow10 p = fromInteger (expts10 ! p)
+      cachedPow10 p = fromInteger (V.unsafeIndex expts10 p)
+
+      hi = maxExpt - 1
 {-# INLINE magnitude #-}
 
 

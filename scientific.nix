@@ -1,5 +1,5 @@
 { cabal, deepseq, hashable, QuickCheck, smallcheck, tasty
-, tastyAntXml, tastyHunit, tastyQuickcheck, tastySmallcheck, text
+, tastyAntXml, tastyHunit, tastyQuickcheck, tastySmallcheck, text, vector
 }:
 
 cabal.mkDerivation (self: {
@@ -9,7 +9,7 @@ cabal.mkDerivation (self: {
   buildDepends = [ deepseq hashable text ];
   testDepends = [
     QuickCheck smallcheck tasty tastyAntXml tastyHunit tastyQuickcheck
-    tastySmallcheck text
+    tastySmallcheck text vector
   ];
   meta = {
     homepage = "https://github.com/basvandijk/scientific";

@@ -350,8 +350,16 @@ instance Bounded NegativeInt where
 instance (Monad m) => SC.Serial m Scientific where
     series = scientifics
 
+instance (Monad m) => SC.Serial m DisplayMode where
+    series =       SC.cons0 DisplayInteger
+             SC.\/ SC.cons0 DisplayFixed
+             SC.\/ SC.cons0 DisplayGeneric
+             SC.\/ SC.cons0 DisplayExponent
+
 scientifics :: (Monad m) => SC.Series m Scientific
 scientifics = SC.cons2 scientific
+              -- TODO: Also vary the DisplayMode
+              -- SC.cons3 scientificWithDisplayMode
 
 nonNegativeScientificSeries :: (Monad m) => SC.Series m Scientific
 nonNegativeScientificSeries = liftM SC.getNonNegative SC.series
@@ -366,11 +374,26 @@ normalizedScientificSeries = liftM Scientific.normalize SC.series
 
 instance QC.Arbitrary Scientific where
     arbitrary = QC.frequency
-                  [ (70, scientific <$> QC.arbitrary <*> intGen)
-                  , (20, scientific <$> QC.arbitrary <*> bigIntGen)
-                  , (10, scientific <$> pure 0       <*> bigIntGen)
-                  ]
+      [ (70, scientific <$> QC.arbitrary
+                        <*> intGen)
+      , (20, scientific <$> QC.arbitrary
+                        <*> bigIntGen)
+      , (10, scientific <$> pure 0
+                        <*> bigIntGen)
+      ]
 
+{- -- TODO: Also vary the DisplayMode
+      [ (70, scientificWithDisplayMode <$> QC.arbitrary
+                                       <*> QC.arbitrary
+                                       <*> intGen)
+      , (20, scientificWithDisplayMode <$> QC.arbitrary
+                                       <*> QC.arbitrary
+                                       <*> bigIntGen)
+      , (10, scientificWithDisplayMode <$> QC.arbitrary
+                                       <*> pure 0
+                                       <*> bigIntGen)
+      ]
+-}
     shrink s = zipWith scientific (QC.shrink $ Scientific.coefficient s)
                                   (QC.shrink $ Scientific.base10Exponent s)
 
