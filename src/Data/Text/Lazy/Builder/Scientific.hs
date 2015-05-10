@@ -1,12 +1,13 @@
 {-# LANGUAGE CPP, MagicHash, OverloadedStrings #-}
 
 module Data.Text.Lazy.Builder.Scientific
-    ( scientificBuilder
+    ( FPFormat(..)
+    , ScientificFormat(..)
+    , scientificBuilder
     , formatScientificBuilder
-    , FPFormat(..)
     ) where
 
-import           Data.Scientific   (Scientific, DisplayMode(..))
+import           Data.Scientific   (Scientific, ScientificFormat(..))
 import qualified Data.Scientific as Scientific
 
 import Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
@@ -24,14 +25,18 @@ import Data.Monoid                  (Monoid, mappend)
 infixr 6 <>
 #endif
 
--- | A @Text@ @Builder@ which renders a scientific number according to
--- its 'DisplayMode'.
+-- | A @Text@ @Builder@ which renders a scientific number as 'show' does.
 scientificBuilder :: Scientific -> Builder
-scientificBuilder s = case Scientific.displayMode s of
-                        DisplayInteger  -> formatIntegerBuilder s
-                        DisplayFixed    -> formatScientificBuilder Fixed    Nothing s
-                        DisplayGeneric  -> formatScientificBuilder Generic  Nothing s
-                        DisplayExponent -> formatScientificBuilder Exponent Nothing s
+scientificBuilder s
+    | Scientific.base10Exponent s == 0 = formatIntegerBuilder s
+    | otherwise = formatFloatingBuilder Generic Nothing s
+
+-- | A @Text@ @Builder@ which renders a scientific number according to
+-- specified 'ScientificFormat'.
+formatScientificBuilder :: ScientificFormat -> Scientific -> Builder
+formatScientificBuilder sf = case sf of
+    IntegerFormat -> formatIntegerBuilder
+    FloatingFormat fmt decs -> formatFloatingBuilder fmt decs
 
 formatIntegerBuilder :: Scientific -> Builder
 formatIntegerBuilder scntfc
@@ -46,12 +51,11 @@ formatIntegerBuilder scntfc
       where
         e = n + se
 
--- | Like 'scientificBuilder' but provides rendering options.
-formatScientificBuilder :: FPFormat
-                        -> Maybe Int  -- ^ Number of decimal places to render.
-                        -> Scientific
-                        -> Builder
-formatScientificBuilder fmt decs scntfc
+formatFloatingBuilder :: FPFormat
+                      -> Maybe Int  -- ^ Number of decimal places to render.
+                      -> Scientific
+                      -> Builder
+formatFloatingBuilder fmt decs scntfc
    | scntfc < 0 = singleton '-' <> doFmt fmt (Scientific.toDecimalDigits (-scntfc))
    | otherwise  =                  doFmt fmt (Scientific.toDecimalDigits   scntfc)
  where
