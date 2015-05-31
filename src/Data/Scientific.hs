@@ -57,7 +57,6 @@ module Data.Scientific
 
       -- * Construction
     , scientific
-    , scientificWithDisplayMode
 
       -- * Projections
     , coefficient
@@ -75,15 +74,10 @@ module Data.Scientific
     , fromFloatDigits
 
       -- * Pretty printing
-    , DisplayMode(..)
-    , displayMode
-    , setDisplayMode
-
     , formatScientific
     , FPFormat(..)
 
     , toDecimalDigits
-    , toDecimalDigits'
 
       -- * Normalization
     , normalize
@@ -122,11 +116,9 @@ import           Data.Bits                    (unsafeShiftR)
 import           Data.Bits                    (shiftR)
 #endif
 
-#ifdef GENERICS
-import           GHC.Generics ( Generic )
-#endif
-
 import GHC.Integer (quotRemInteger, divInteger, quotInteger)
+
+import Utils (roundTo)
 
 
 ----------------------------------------------------------------------
@@ -142,10 +134,7 @@ import GHC.Integer (quotRemInteger, divInteger, quotInteger)
 -- A scientific number with 'coefficient' @c@ and 'base10Exponent' @e@
 -- corresponds to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@
 data Scientific = Scientific
-    { displayMode :: !DisplayMode
-      -- ^ Get the display mode of a scientific number.
-
-    , coefficient :: !Integer
+    { coefficient :: !Integer
       -- ^ The coefficient of a scientific number.
       --
       -- Note that this number is not necessarily normalized, i.e.
@@ -160,51 +149,10 @@ data Scientific = Scientific
       -- ^ The base-10 exponent of a scientific number.
     } deriving (Typeable, Data)
 
--- | Specifies how a 'Scientific' number should be rendered.
---
--- By default a 'Scientific' is constructed with the 'DisplayGeneric' mode. The
--- following are exceptions to this rule:
---
--- * A scientific can be constructed with a specific display mode using
---   'scientificWithDisplayMode'.
---
--- * The display mode of an exisiting scientific can be set using
--- 'setDisplayMode'.
---
--- * The 'fromInteger` method will automatically set the mode to
---   'DisplayInteger'.
---
--- * When scientific numbers are combined (for example in '+') the resulting
---   scienfific number will have the highest display mode of the two input
---   scientifics (@'max' d1 d2@) according to the derived 'Ord' instance of
---   'DisplayMode'.
-data DisplayMode =
-    DisplayInteger  -- ^ Always display as an integer so no decimal point,
-                    --   this will truncate a fractional as if it was converted to an integer.
-  | DisplayFixed    -- ^ Displays as fixed point, includes decimal point.
-  | DisplayGeneric  -- ^ Mix mode, this is the default for show.
-                    --   Use decimal notation for values between 0.1 and 9,999,999,
-                    --   and scientific notation otherwise.
-  | DisplayExponent -- ^ Always display in scientific notation (e.g. 2.3e123),
-                    --   equivalent to @printf %e@.
-  deriving ( Eq, Ord, Bounded, Enum, Show, Read, Typeable, Data
-#ifdef GENERICS
-           , Generic
-#endif
-           )
-
 -- | @scientific c e@ constructs a scientific number which corresponds
 -- to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@.
 scientific :: Integer -> Int -> Scientific
-scientific = Scientific DisplayGeneric
-
--- | Like 'scientific' but also allows setting the 'DisplayMode'.
-scientificWithDisplayMode :: DisplayMode -> Integer -> Int -> Scientific
-scientificWithDisplayMode = Scientific
-
--- | Set the display mode of a scientific number.
-setDisplayMode :: DisplayMode -> Scientific -> Scientific
-setDisplayMode d s = s {displayMode=d}
+scientific = Scientific
 
 
 ----------------------------------------------------------------------
@@ -212,7 +160,7 @@ setDisplayMode d s = s {displayMode=d}
 ----------------------------------------------------------------------
 
 instance NFData Scientific where
-    rnf (Scientific _ _ _) = ()
+    rnf (Scientific _ _) = ()
 
 instance Hashable Scientific where
     hashWithSalt salt = hashWithSalt salt . toRational
@@ -240,39 +188,37 @@ instance Ord Scientific where
     compare = compare `on` toRational
     {-# INLINE compare #-}
 
--- | Note that the 'fromInteger` method will automatically
--- set the 'DisplayMode' to 'DisplayInteger'.
 instance Num Scientific where
-    Scientific d1 c1 e1 + Scientific d2 c2 e2
-       | e1 < e2   = Scientific (max d1 d2) (c1   + c2*l) e1
-       | otherwise = Scientific (max d1 d2) (c1*r + c2  ) e2
+    Scientific c1 e1 + Scientific c2 e2
+       | e1 < e2   = Scientific (c1   + c2*l) e1
+       | otherwise = Scientific (c1*r + c2  ) e2
          where
            l = magnitude (e2 - e1)
            r = magnitude (e1 - e2)
     {-# INLINE (+) #-}
 
-    Scientific d1 c1 e1 - Scientific d2 c2 e2
-       | e1 < e2   = Scientific (max d1 d2) (c1   - c2*l) e1
-       | otherwise = Scientific (max d1 d2) (c1*r - c2  ) e2
+    Scientific c1 e1 - Scientific c2 e2
+       | e1 < e2   = Scientific (c1   - c2*l) e1
+       | otherwise = Scientific (c1*r - c2  ) e2
          where
            l = magnitude (e2 - e1)
            r = magnitude (e1 - e2)
     {-# INLINE (-) #-}
 
-    Scientific d1 c1 e1 * Scientific d2 c2 e2 =
-        Scientific (max d1 d2) (c1 * c2) (e1 + e2)
+    Scientific c1 e1 * Scientific c2 e2 =
+        Scientific (c1 * c2) (e1 + e2)
     {-# INLINE (*) #-}
 
-    abs (Scientific d c e) = Scientific d (abs c) e
+    abs (Scientific c e) = Scientific (abs c) e
     {-# INLINE abs #-}
 
-    negate (Scientific d c e) = Scientific d (negate c) e
+    negate (Scientific c e) = Scientific (negate c) e
     {-# INLINE negate #-}
 
-    signum (Scientific d c _) = Scientific d (signum c) 0
+    signum (Scientific c _) = Scientific (signum c) 0
     {-# INLINE signum #-}
 
-    fromInteger i = Scientific DisplayInteger i 0
+    fromInteger i = Scientific i 0
     {-# INLINE fromInteger #-}
 
 -- | /WARNING:/ 'toRational' needs to compute the 'Integer' magnitude:
@@ -283,7 +229,7 @@ instance Num Scientific where
 -- coming from an untrusted source and use 'toRealFloat' instead. The
 -- latter guards against excessive space usage.
 instance Real Scientific where
-    toRational (Scientific _ c e)
+    toRational (Scientific c e)
       | e < 0     =  c % magnitude (-e)
       | otherwise = (c * magnitude   e) % 1
     {-# INLINE toRational #-}
@@ -312,7 +258,7 @@ instance Fractional Scientific where
       where
         -- Divide the numerator by the denominator using long division.
         longDiv :: Integer -> Int -> (Integer -> Scientific)
-        longDiv !c !e  0 = Scientific DisplayGeneric c e
+        longDiv !c !e  0 = Scientific c e
         longDiv !c !e !n
                           -- TODO: Use a logarithm here!
             | n < d     = longDiv (c * 10) (e - 1) (n * 10)
@@ -329,11 +275,11 @@ instance RealFrac Scientific where
     --
     -- * @f@ is a fraction with the same type and sign as @s@,
     --   and with absolute value less than @1@.
-    properFraction s@(Scientific d c e)
+    properFraction s@(Scientific c e)
         | e < 0     = if dangerouslySmall c e
                       then (0, s)
                       else case c `quotRemInteger` magnitude (-e) of
-                             (#q, r#) -> (fromInteger q, Scientific d r e)
+                             (#q, r#) -> (fromInteger q, Scientific r e)
         | otherwise = (toIntegral s, 0)
     {-# INLINE properFraction #-}
 
@@ -354,7 +300,7 @@ instance RealFrac Scientific where
                        n = fromInteger q
                        m | r < 0     = n - 1
                          | otherwise = n + 1
-                       f = Scientific DisplayGeneric r e
+                       f = Scientific r e
                    in case signum $ coefficient $ abs f - 0.5 of
                         -1 -> n
                         0  -> if even n then n else m
@@ -436,7 +382,7 @@ positivize f x | x < 0      = -(f (-x))
 {-# INLINE positivize #-}
 
 whenFloating :: (Num a) => (Integer -> Int -> a) -> Scientific -> a
-whenFloating f s@(Scientific _ c e)
+whenFloating f s@(Scientific c e)
     | e < 0     = f c e
     | otherwise = toIntegral s
 {-# INLINE whenFloating #-}
@@ -444,7 +390,7 @@ whenFloating f s@(Scientific _ c e)
 -- | Precondition: the 'Scientific' @s@ needs to be an integer:
 -- @base10Exponent (normalize s) >= 0@
 toIntegral :: (Num a) => Scientific -> a
-toIntegral (Scientific _ c e) = fromInteger c * magnitude e
+toIntegral (Scientific c e) = fromInteger c * magnitude e
 {-# INLINE toIntegral #-}
 
 
@@ -471,9 +417,9 @@ expts10 = runST $ do
             xx = x * x
             x  = V.unsafeIndex expts10 half
 #if MIN_VERSION_base(4,5,0)
-            half = ix `unsafeShiftR` 1
+            !half = ix `unsafeShiftR` 1
 #else
-            half = ix `shiftR` 1
+            !half = ix `shiftR` 1
 #endif
     go 2
 
@@ -513,7 +459,7 @@ fromFloatDigits = positivize fromPositiveRealFloat
         where
           (digits, e) = Numeric.floatToDigits 10 r
 
-          go []     !c !n = Scientific DisplayGeneric c (e - n)
+          go []     !c !n = Scientific c (e - n)
           go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
 
 -- | Safely convert a 'Scientific' number into a 'RealFloat' (like a 'Double' or a
@@ -535,7 +481,7 @@ toRealFloat = either id id . toBoundedRealFloat
 -- 'Scientific' is too big or too small to be represented in the target type,
 -- Infinity or 0 will be returned as 'Left'.
 toBoundedRealFloat :: forall a. (RealFloat a) => Scientific -> Either a a
-toBoundedRealFloat s@(Scientific _ c e)
+toBoundedRealFloat s@(Scientific c e)
     | c == 0                                       = Right 0
     | e >  limit && e > hiLimit                    = Left  $ sign (1/0) -- Infinity
     | e < -limit && e < loLimit && e + d < loLimit = Left  $ sign 0
@@ -673,11 +619,9 @@ scientificP = do
                 then return   e
                 else return (-e)
 
-      d = DisplayGeneric
-
   (ReadP.satisfy isE >>
-           ((Scientific d signedCoeff . (expnt +)) <$> eP)) `mplus`
-     return (Scientific d signedCoeff    expnt)
+           ((Scientific signedCoeff . (expnt +)) <$> eP)) `mplus`
+     return (Scientific signedCoeff    expnt)
 
 
 foldDigits :: (a -> Int -> a) -> a -> ReadP a
@@ -713,114 +657,105 @@ isE c = c == 'e' || c == 'E'
 -- Pretty Printing
 ----------------------------------------------------------------------
 
--- | Note that the rendering of a scientific number can be controlled
--- using the specified 'DisplayMode'.
 instance Show Scientific where
-    show s = case displayMode s of
-               DisplayInteger  -> formatAsInteger s
-               DisplayFixed    -> formatScientific Fixed    Nothing s
-               DisplayGeneric  -> formatScientific Generic  Nothing s
-               DisplayExponent -> formatScientific Exponent Nothing s
-
-formatAsInteger :: Scientific -> String
-formatAsInteger scntfc@(Scientific _ c _)
-   | c < 0     = '-':doFmt (toDecimalDigits' (-scntfc))
-   | otherwise =     doFmt (toDecimalDigits'   scntfc )
-  where
-    doFmt :: ([Int], Int, Int) -> String
-    doFmt (is, n, se)
-        | e <= 0    = "0"
-        | otherwise = map intToDigit (take e is) ++
-                      replicate se '0'
+    show s | coefficient s < 0 = '-':showPositive (-s)
+           | otherwise         =     showPositive   s
       where
-        e = n + se
+        showPositive :: Scientific -> String
+        showPositive = fmtAsGeneric . toDecimalDigits
+
+        fmtAsGeneric :: ([Int], Int) -> String
+        fmtAsGeneric x@(_is, e)
+            | e < 0 || e > 7 = fmtAsExponent x
+            | otherwise      = fmtAsFixed    x
+
+fmtAsExponent :: ([Int], Int) -> String
+fmtAsExponent (is, e) =
+    case ds of
+      "0"     -> "0.0e0"
+      [d]     -> d : '.' :'0' : 'e' : show_e'
+      (d:ds') -> d : '.' : ds' ++ ('e' : show_e')
+      []      -> error "formatScientific/doFmt/FFExponent: []"
+  where
+    show_e' = show (e-1)
+
+    ds = map intToDigit is
+
+fmtAsFixed :: ([Int], Int) -> String
+fmtAsFixed (is, e)
+    | e <= 0    = '0':'.':(replicate (-e) '0' ++ ds)
+    | otherwise =
+        let
+           f 0 s    rs  = mk0 (reverse s) ++ '.':mk0 rs
+           f n s    ""  = f (n-1) ('0':s) ""
+           f n s (r:rs) = f (n-1) (r:s) rs
+        in
+           f e "" ds
+  where
+    mk0 "" = "0"
+    mk0 ls = ls
+
+    ds = map intToDigit is
 
 -- | Like 'show' but provides rendering options.
 formatScientific :: FPFormat
                  -> Maybe Int  -- ^ Number of decimal places to render.
                  -> Scientific
                  -> String
-formatScientific fmt decs scntfc@(Scientific _ c _)
-   | c < 0     = '-':doFmt fmt (toDecimalDigits (-scntfc))
-   | otherwise =     doFmt fmt (toDecimalDigits   scntfc )
+formatScientific format mbDecs s
+    | coefficient s < 0 = '-':formatPositiveScientific (-s)
+    | otherwise         =     formatPositiveScientific   s
   where
-    doFmt :: FPFormat -> ([Int], Int) -> String
-    doFmt format (is, e) =
-      let ds = map intToDigit is in
-      case format of
-       Generic ->
-        doFmt (if e < 0 || e > 7 then Exponent else Fixed)
-              (is, e)
-       Exponent ->
-        case decs of
-         Nothing ->
-          let show_e' = show (e-1) in
-          case ds of
-            "0"     -> "0.0e0"
-            [d]     -> d : ".0e" ++ show_e'
-            (d:ds') -> d : '.' : ds' ++ "e" ++ show_e'
-            []      -> error "formatScientific/doFmt/FFExponent: []"
-         Just dec ->
-          let dec' = max dec 1 in
-          case is of
-           [0] -> '0' :'.' : take dec' (repeat '0') ++ "e0"
-           _ ->
-            let
-             (ei,is') = roundTo (dec'+1) is
-             (d:ds') = map intToDigit (if ei > 0 then init is' else is')
-            in
-            d:'.':ds' ++ 'e':show (e-1+ei)
-       Fixed ->
-        let
-         mk0 ls = case ls of { "" -> "0" ; _ -> ls}
-        in
-        case decs of
-         Nothing
-            | e <= 0    -> "0." ++ replicate (-e) '0' ++ ds
-            | otherwise ->
-               let
-                  f 0 s    rs  = mk0 (reverse s) ++ '.':mk0 rs
-                  f n s    ""  = f (n-1) ('0':s) ""
-                  f n s (r:rs) = f (n-1) (r:s) rs
-               in
-                  f e "" ds
-         Just dec ->
-          let dec' = max dec 0 in
-          if e >= 0 then
-           let
-            (ei,is') = roundTo (dec' + e) is
-            (ls,rs)  = splitAt (e+ei) (map intToDigit is')
-           in
-           mk0 ls ++ (if null rs then "" else '.':rs)
-          else
-           let
-            (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
-            d:ds' = map intToDigit (if ei > 0 then is' else 0:is')
-           in
-           d : (if null ds' then "" else '.':ds')
+    formatPositiveScientific :: Scientific -> String
+    formatPositiveScientific s' = case format of
+        Generic  -> fmtAsGeneric        $ toDecimalDigits s'
+        Exponent -> fmtAsExponentMbDecs $ toDecimalDigits s'
+        Fixed    -> fmtAsFixedMbDecs    $ toDecimalDigits s'
 
-----------------------------------------------------------------------
+    fmtAsGeneric :: ([Int], Int) -> String
+    fmtAsGeneric x@(_is, e)
+        | e < 0 || e > 7 = fmtAsExponentMbDecs x
+        | otherwise      = fmtAsFixedMbDecs x
 
-roundTo :: Int -> [Int] -> (Int,[Int])
-roundTo d is =
-  case f d True is of
-    x@(0,_) -> x
-    (1,xs)  -> (1, 1:xs)
-    _       -> error "roundTo: bad Value"
- where
-  base = 10
+    fmtAsExponentMbDecs :: ([Int], Int) -> String
+    fmtAsExponentMbDecs x = case mbDecs of
+                              Nothing  -> fmtAsExponent x
+                              Just dec -> fmtAsExponentDecs dec x
 
-  b2 = base `quot` 2
+    fmtAsFixedMbDecs :: ([Int], Int) -> String
+    fmtAsFixedMbDecs x = case mbDecs of
+                           Nothing  -> fmtAsFixed x
+                           Just dec -> fmtAsFixedDecs dec x
 
-  f n _ []     = (0, replicate n 0)
-  f 0 e (x:xs) | x == b2 && e && all (== 0) xs = (0, [])   -- Round to even when at exactly half the base
-               | otherwise = (if x >= b2 then 1 else 0, [])
-  f n _ (i:xs)
-     | i' == base = (1,0:ds)
-     | otherwise  = (0,i':ds)
+    fmtAsExponentDecs :: Int -> ([Int], Int) -> String
+    fmtAsExponentDecs dec (is, e) =
+        let dec' = max dec 1 in
+            case is of
+             [0] -> '0' :'.' : take dec' (repeat '0') ++ "e0"
+             _ ->
+              let
+               (ei,is') = roundTo (dec'+1) is
+               (d:ds') = map intToDigit (if ei > 0 then init is' else is')
+              in
+              d:'.':ds' ++ 'e':show (e-1+ei)
+
+    fmtAsFixedDecs :: Int -> ([Int], Int) -> String
+    fmtAsFixedDecs dec (is, e) =
+        let dec' = max dec 0 in
+        if e >= 0 then
+         let
+          (ei,is') = roundTo (dec' + e) is
+          (ls,rs)  = splitAt (e+ei) (map intToDigit is')
+         in
+         mk0 ls ++ (if null rs then "" else '.':rs)
+        else
+         let
+          (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
+          d:ds' = map intToDigit (if ei > 0 then is' else 0:is')
+         in
+         d : (if null ds' then "" else '.':ds')
       where
-       (c,ds) = f (n-1) (even i) xs
-       i'     = c + i
+        mk0 ls = case ls of { "" -> "0" ; _ -> ls}
 
 ----------------------------------------------------------------------
 
@@ -840,30 +775,16 @@ roundTo d is =
 -- The last property means that the coefficient will be normalized, i.e. doesn't
 -- contain trailing zeros.
 toDecimalDigits :: Scientific -> ([Int], Int)
-toDecimalDigits s = case toDecimalDigits' s of (is, n, e) -> (is, n + e)
-
--- | @toDecimalDigits'@ relates to 'toDecimalDigits' as follows:
---
--- @
--- toDecimalDigits s = (is, n + e)
---   where
---     (is, n, e) = toDecimalDigits' s
--- @
---
--- * @n@ is the length of the list of digits @is@.
---
--- * @e@ is the @'normalize'd@ 'base10Exponent' of @s@.
-toDecimalDigits' :: Scientific -> ([Int], Int, Int)
-toDecimalDigits' (Scientific _ 0  _)  = ([0], 1, 0)
-toDecimalDigits' (Scientific _ c' e') =
+toDecimalDigits (Scientific 0  _)  = ([0], 1)
+toDecimalDigits (Scientific c' e') =
     case normalizePositive c' e' of
       (c, e) -> case reverseAndLength $ digits c of
-                  (is, n) -> (is, n, e)
+                  (is, n) -> (is, n + e)
   where
     digits :: Integer -> [Int]
     digits 0 = []
     digits i = case i `quotRemInteger` 10 of
-                 (#q, r#) -> fromIntegral r : digits q
+                 (# q, r #) -> fromIntegral r : digits q
 
     reverseAndLength :: [a] -> ([a], Int)
     reverseAndLength l = rev l [] 0
@@ -879,17 +800,15 @@ toDecimalDigits' (Scientific _ c' e') =
 -- | Normalize a scientific number by dividing out powers of 10 from the
 -- 'coefficient' and incrementing the 'base10Exponent' each time.
 --
--- The 'DisplayMode' will remain unaffected.
---
 -- You should rarely have a need for this function since scientific numbers are
 -- automatically normalized when pretty-printed and in 'toDecimalDigits'.
 normalize :: Scientific -> Scientific
-normalize (Scientific d c e)
-    | c > 0 = case normalizePositive   c  e of (c', e') -> Scientific d   c'  e'
-    | c < 0 = case normalizePositive (-c) e of (c', e') -> Scientific d (-c') e'
-    | otherwise {- c == 0 -} = Scientific d 0 0
+normalize (Scientific c e)
+    | c > 0 = case normalizePositive   c  e of (c', e') -> Scientific   c'  e'
+    | c < 0 = case normalizePositive (-c) e of (c', e') -> Scientific (-c') e'
+    | otherwise {- c == 0 -} = Scientific 0 0
 
 normalizePositive :: Integer -> Int -> (Integer, Int)
 normalizePositive c !e = case quotRemInteger c 10 of
-                           (#c', 0#) -> normalizePositive c' (e+1)
-                           _         -> (c, e)
+                           (# c', 0 #) -> normalizePositive c' (e+1)
+                           _           -> (c, e)

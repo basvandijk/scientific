@@ -1,44 +1,5 @@
-0.3.4.0
+0.3.3.9
 	* Various performance improvements.
-
-	* Allow setting the DisplayMode of a Scientific number. This
-	  controls how the scientific is rendered.
-
-	  One of the advantages is that this makes aeson encode integrals
-	  as integers instead of as floating point numbers.
-
-	  More specifically the changes are:
-
-	  + data DisplayMode = DisplayInteger | DisplayFixed | DisplayGeneric  | DisplayExponent
-	      deriving (Eq, Ord, Show, Typeable, Data)
-
-	  + scientificWithDisplayMode :: DisplayMode -> Integer -> Int -> Scientific
-
-	  + displayMode :: Scientific -> DisplayMode
-
-	  + setDisplayMode :: DisplayMode -> Scientific -> Scientific
-
-	  + When scientific numbers are combined (for example in '+') the
-	    resulting scienfific number will have the highest display mode of
-	    the two input scientifics (@'max' d1 d2@) according to the derived
-	    'Ord' instance of 'DisplayMode'.
-
-	  + The fromInteger method for Scientific will automatically set
-	    the display mode to DisplayInteger. This makes aeson automatically
-	    encode integrals as integers.
-
-	  + toDecimalDigits' :: Scientific -> ([Int], Int, Int)
-	    toDecimalDigits' relates to toDecimalDigits as follows:
-
-              toDecimalDigits s = (is, n + e)
-                where
-                  (is, n, e) = toDecimalDigits' s
-
-	    * n is the length of the list of digits is.
-
-	    * e is the normalized base10Exponent of s.
-
-	  Courtesy of trilogysci.
 
 0.3.3.8
 	* Support QuickCheck-2.8.

@@ -196,23 +196,6 @@ main = testMain $ testGroup "scientific"
     [ testProperty "isFloating" $ \s -> isFloating s ==      genericIsFloating s
     , testProperty "isInteger"  $ \s -> isInteger  s == not (genericIsFloating s)
     ]
-  , testGroup "Display Mode Order"
-    [ QC.testProperty "highest is exponent" $ \d -> max DisplayExponent d == DisplayExponent
-    , QC.testProperty "lowest is int"       $ \d -> min DisplayInteger  d == DisplayInteger
-    ]
-  , testGroup "Display Mode Accessors"
-    [ QC.testProperty "set , get" $ \d ->
-          displayMode (setDisplayMode d (scientific 234 10)) == d
-    ]
-  , testGroup "Display Mode Integer"
-    [ QC.testProperty "large int - pad zeros" $ QC.forAll (QC.elements [0..10]) $ \e ->
-          (show (scientificWithDisplayMode DisplayInteger 23456 e) ++ ".0") ==
-          (formatScientific Fixed Nothing $ scientific 23456 e)
-    , QC.testProperty "medium int - truncate" $ QC.forAll (QC.elements [(-4)..(0)]) $ \e ->
-          show (scientificWithDisplayMode DisplayInteger 23456 e) == take (5 + e) "23456"
-    , QC.testProperty "small values = 0 " $ QC.forAll (QC.elements [5..20]) $ \e ->
-          show (scientificWithDisplayMode DisplayInteger 23456 (-e)) == "0"
-    ]
   ]
 
 testMain :: TestTree -> IO ()
@@ -350,16 +333,8 @@ instance Bounded NegativeInt where
 instance (Monad m) => SC.Serial m Scientific where
     series = scientifics
 
-instance (Monad m) => SC.Serial m DisplayMode where
-    series =       SC.cons0 DisplayInteger
-             SC.\/ SC.cons0 DisplayFixed
-             SC.\/ SC.cons0 DisplayGeneric
-             SC.\/ SC.cons0 DisplayExponent
-
 scientifics :: (Monad m) => SC.Series m Scientific
 scientifics = SC.cons2 scientific
-              -- TODO: Also vary the DisplayMode
-              -- SC.cons3 scientificWithDisplayMode
 
 nonNegativeScientificSeries :: (Monad m) => SC.Series m Scientific
 nonNegativeScientificSeries = liftM SC.getNonNegative SC.series
@@ -382,23 +357,8 @@ instance QC.Arbitrary Scientific where
                         <*> bigIntGen)
       ]
 
-{- -- TODO: Also vary the DisplayMode
-      [ (70, scientificWithDisplayMode <$> QC.arbitrary
-                                       <*> QC.arbitrary
-                                       <*> intGen)
-      , (20, scientificWithDisplayMode <$> QC.arbitrary
-                                       <*> QC.arbitrary
-                                       <*> bigIntGen)
-      , (10, scientificWithDisplayMode <$> QC.arbitrary
-                                       <*> pure 0
-                                       <*> bigIntGen)
-      ]
--}
     shrink s = zipWith scientific (QC.shrink $ Scientific.coefficient s)
                                   (QC.shrink $ Scientific.base10Exponent s)
-
-instance QC.Arbitrary DisplayMode where
-    arbitrary = QC.elements [DisplayInteger, DisplayFixed, DisplayGeneric, DisplayExponent]
 
 nonNegativeScientificGen :: QC.Gen Scientific
 nonNegativeScientificGen =

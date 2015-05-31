@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, MagicHash, OverloadedStrings #-}
+{-# LANGUAGE CPP, OverloadedStrings #-}
 
 module Data.ByteString.Builder.Scientific
     ( scientificBuilder
@@ -6,7 +6,7 @@ module Data.ByteString.Builder.Scientific
     , FPFormat(..)
     ) where
 
-import           Data.Scientific   (Scientific, DisplayMode(..))
+import           Data.Scientific   (Scientific)
 import qualified Data.Scientific as Scientific
 
 import Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
@@ -22,7 +22,6 @@ import           Data.ByteString.Builder (Builder, string8, char8, intDec)
 import           Data.ByteString.Builder.Extra (byteStringCopy)
 #endif
 
-import GHC.Base                     (Int(I#), Char(C#), chr#, ord#, (+#))
 import Data.Monoid                  (mempty)
 #if MIN_VERSION_base(4,5,0)
 import Data.Monoid                  ((<>))
@@ -33,27 +32,14 @@ import Data.Monoid                  (Monoid, mappend)
 infixr 6 <>
 #endif
 
--- | A @ByteString@ @Builder@ which renders a scientific according to its
--- 'DisplayMode'.
-scientificBuilder :: Scientific -> Builder
-scientificBuilder s = case Scientific.displayMode s of
-                        DisplayInteger  -> formatIntegerBuilder s
-                        DisplayFixed    -> formatScientificBuilder Fixed    Nothing s
-                        DisplayGeneric  -> formatScientificBuilder Generic  Nothing s
-                        DisplayExponent -> formatScientificBuilder Exponent Nothing s
+import Utils (roundTo, i2d)
 
-formatIntegerBuilder :: Scientific -> Builder
-formatIntegerBuilder scntfc
-   | scntfc < 0 = char8 '-' <> doFmt (Scientific.toDecimalDigits' (-scntfc))
-   | otherwise  =              doFmt (Scientific.toDecimalDigits'   scntfc )
-  where
-    doFmt :: ([Int], Int, Int) -> Builder
-    doFmt (is, n, se)
-        | e <= 0    = char8 '0'
-        | otherwise = string8 (map i2d $ take e is) <>
-                      string8 (replicate se '0')
-      where
-        e = n + se
+-- | A @ByteString@ @Builder@ which renders a scientific number to full
+-- precision, using standard decimal notation for arguments whose
+-- absolute value lies between @0.1@ and @9,999,999@, and scientific
+-- notation otherwise.
+scientificBuilder :: Scientific -> Builder
+scientificBuilder = formatScientificBuilder Generic Nothing
 
 -- | Like 'scientificBuilder' but provides rendering options.
 formatScientificBuilder :: FPFormat
@@ -122,29 +108,3 @@ formatScientificBuilder fmt decs scntfc
           d:ds' = map i2d (if ei > 0 then is' else 0:is')
          in
          char8 d <> (if null ds' then mempty else char8 '.' <> string8 ds')
-
--- | Unsafe conversion for decimal digits.
-{-# INLINE i2d #-}
-i2d :: Int -> Char
-i2d (I# i#) = C# (chr# (ord# '0'# +# i#))
-
-roundTo :: Int -> [Int] -> (Int,[Int])
-roundTo d is =
-  case f d True is of
-    x@(0,_) -> x
-    (1,xs)  -> (1, 1:xs)
-    _       -> error "roundTo: bad Value"
- where
-  base = 10
-
-  b2 = base `quot` 2
-
-  f n _ []     = (0, replicate n 0)
-  f 0 e (x:xs) | x == b2 && e && all (== 0) xs = (0, [])   -- Round to even when at exactly half the base
-               | otherwise = (if x >= b2 then 1 else 0, [])
-  f n _ (i:xs)
-     | i' == base = (1,0:ds)
-     | otherwise  = (0,i':ds)
-      where
-       (c,ds) = f (n-1) (even i) xs
-       i'     = c + i

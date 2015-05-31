@@ -1,5 +1,5 @@
 name:                scientific
-version:             0.3.4.0
+version:             0.3.3.9
 synopsis:            Numbers represented using scientific notation
 description:
   @Data.Scientific@ provides a space efficient and arbitrary precision
@@ -62,6 +62,7 @@ library
   exposed-modules:     Data.Scientific
                        Data.Text.Lazy.Builder.Scientific
   other-modules:       Math.NumberTheory.Logarithms
+                       Utils
   other-extensions:    DeriveDataTypeable, BangPatterns
   ghc-options:         -Wall
   build-depends:       base        >= 4.3   && < 4.9
