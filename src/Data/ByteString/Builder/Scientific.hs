@@ -22,7 +22,10 @@ import           Data.ByteString.Builder (Builder, string8, char8, intDec)
 import           Data.ByteString.Builder.Extra (byteStringCopy)
 #endif
 
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                  (mempty)
+#endif
+
 #if MIN_VERSION_base(4,5,0)
 import Data.Monoid                  ((<>))
 #else

@@ -95,7 +95,6 @@ import           Control.DeepSeq              (NFData(rnf))
 import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
 import           Data.Function                (on)
-import           Data.Functor                 ((<$>))
 import           Data.Hashable                (Hashable(..))
 import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
@@ -109,6 +108,10 @@ import qualified Text.ParserCombinators.ReadPrec as ReadPrec
 import qualified Text.ParserCombinators.ReadP    as ReadP
 import           Text.ParserCombinators.ReadP     ( ReadP )
 import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
+
+#if !MIN_VERSION_base(4,8,0)
+import           Data.Functor                 ((<$>))
+#endif
 
 #if MIN_VERSION_base(4,5,0)
 import           Data.Bits                    (unsafeShiftR)
