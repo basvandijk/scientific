@@ -1,20 +1,21 @@
-{ cabal, deepseq, hashable, QuickCheck, smallcheck, tasty
-, tastyAntXml, tastyHunit, tastyQuickcheck, tastySmallcheck, text, vector
+{ mkDerivation, base, bytestring, containers, deepseq, ghc-prim
+, hashable, integer-gmp, QuickCheck, smallcheck, stdenv, tasty
+, tasty-ant-xml, tasty-hunit, tasty-quickcheck, tasty-smallcheck
+, text, vector
 }:
-
-cabal.mkDerivation (self: {
+mkDerivation {
   pname = "scientific";
-  version = "HEAD";
+  version = "0.3.4.0";
   src = ./.;
-  buildDepends = [ deepseq hashable text ];
-  testDepends = [
-    QuickCheck smallcheck tasty tastyAntXml tastyHunit tastyQuickcheck
-    tastySmallcheck text vector
+  libraryHaskellDepends = [
+    base bytestring containers deepseq ghc-prim hashable integer-gmp
+    text vector
   ];
-  meta = {
-    homepage = "https://github.com/basvandijk/scientific";
-    description = "Numbers represented using scientific notation";
-    license = self.stdenv.lib.licenses.bsd3;
-    platforms = self.ghc.meta.platforms;
-  };
-})
+  testHaskellDepends = [
+    base bytestring QuickCheck smallcheck tasty tasty-ant-xml
+    tasty-hunit tasty-quickcheck tasty-smallcheck text
+  ];
+  homepage = "https://github.com/basvandijk/scientific";
+  description = "Numbers represented using scientific notation";
+  license = stdenv.lib.licenses.bsd3;
+}

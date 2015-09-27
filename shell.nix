@@ -1,17 +1,15 @@
-let
-  pkgs = import <nixpkgs> {};
-  haskellPackages = pkgs.haskellPackages.override {
-    extension = self: super: {
-      scientific = self.callPackage ./scientific.nix {};
-    };
-  };
+{ nixpkgs ? import <nixpkgs> {}, compiler ? "default" }:
 
-in pkgs.myEnvFun {
-     name = haskellPackages.scientific.name;
-     buildInputs = [
-       (haskellPackages.ghcWithPackages (hs: ([
-         hs.cabalInstall
-       ] ++ hs.scientific.propagatedNativeBuildInputs
-         ++ hs.scientific.extraBuildInputs)))
-     ];
-   }
+let
+
+  inherit (nixpkgs) pkgs;
+
+  haskellPackages = if compiler == "default"
+                      then pkgs.haskellPackages
+                      else pkgs.haskell.packages.${compiler};
+
+  drv = haskellPackages.callPackage (import ./scientific.nix) {};
+
+in
+
+  if pkgs.lib.inNixShell then drv.env else drv
