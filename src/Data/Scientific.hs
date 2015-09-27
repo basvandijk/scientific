@@ -3,6 +3,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE PatternGuards #-}
 
 #ifdef GENERICS
 {-# LANGUAGE DeriveGeneric #-}
@@ -47,7 +48,8 @@
 -- are only partially defined! Specifically 'recip' and '/' will diverge
 -- (i.e. loop and consume all space) when their outputs have an infinite decimal
 -- expansion. 'fromRational' will diverge when the input 'Rational' has an
--- infinite decimal expansion.
+-- infinite decimal expansion. Consider using 'fromRationalRepetend' for these
+-- rationals which will detect the repetition and indicate where it starts.
 --
 -- This module is designed to be imported qualified:
 --
@@ -67,6 +69,8 @@ module Data.Scientific
     , isInteger
 
       -- * Conversions
+    , fromRationalRepetend
+    , toRationalRepetend
     , floatingOrInteger
     , toRealFloat
     , toBoundedRealFloat
@@ -96,6 +100,7 @@ import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
 import           Data.Function                (on)
 import           Data.Hashable                (Hashable(..))
+import qualified Data.Map.Strict     as M     (Map, empty, insert, lookup)
 import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
 import qualified Data.Vector         as V
@@ -246,8 +251,12 @@ instance Real Scientific where
    realToFrac = toRealFloat :: Scientific -> Float #-}
 
 -- | /WARNING:/ 'recip' and '/' will diverge (i.e. loop and consume all space)
--- when their outputs have an infinite decimal expansion. 'fromRational' will
--- diverge when the input 'Rational' has an infinite decimal expansion.
+-- when their outputs have an
+-- [infinitely repeating decimal representation](https://en.wikipedia.org/wiki/Repeating_decimal), a so called /repeating decimal/.
+--
+-- 'fromRational' will diverge when the input 'Rational' is a repeating decimal.
+-- Consider using 'fromRationalRepetend' for these rationals which will detect
+-- the repetition and indicate where it starts.
 instance Fractional Scientific where
     recip = fromRational . recip . toRational
     {-# INLINE recip #-}
@@ -269,6 +278,130 @@ instance Fractional Scientific where
                             (#q, r#) -> longDiv (c + q) e r
 
         d = denominator rational
+
+-- | Like 'fromRational', this function converts a `Rational` to a `Scientific`
+-- but instead of diverging (i.e loop and consume all space) on
+-- [repeating decimals](https://en.wikipedia.org/wiki/Repeating_decimal)
+-- it detects the repeating part, the /repetend/, and returns where it starts.
+--
+-- To detect the repetition this function consumes space linear in the number of
+-- digits in the resulting scientific. In order to bound the space usage an
+-- optional limit can be specified. If the number of digits reaches this limit
+-- @Left (s, r)@ will be returned. Here @s@ is the 'Scientific' constructed so
+-- far and @r@ is the remaining 'Rational'. @toRational s + r@ should yield to
+-- original 'Rational'
+--
+-- If the limit is not reached or no limit was specified @Right (s,
+-- mbRepetendIx)@ will be returned. Here @s@ is the 'Scientific' without any
+-- repetition and @mbRepetendIx@ specifies if and where in the fractional part
+-- the repetend begins.
+--
+-- For example:
+--
+-- @fromRationalRepetend Nothing (1 % 28) == Right (3.571428e-2, Just 2)@
+--
+-- This represents the repeating decimal: @0.03571428571428571428...@
+-- which is sometimes also unambiguously denoted as @0.03(571428)@.
+-- Here the repetend is enclosed in parantheses and starts at the 3rd digit (index 2)
+-- in the fractional part. Specifying a limit results in the following:
+--
+-- @fromRationalRepetend (Just 4) (1 % 28) == Left (3.5e-2,1 % 1400)@
+--
+-- You can expect the following property to hold.
+--
+-- @ forall (mbLimit :: Maybe Int) (r :: Rational).
+-- r == (case 'fromRationalRepetend' mbLimit r of
+--        Left (s, r') -> toRational s + r'
+--        Right (s, mbRepetendIx) ->
+--          case mbRepetendIx of
+--            Nothing         -> toRational s
+--            Just repetendIx -> 'toRationalRepetend' s repetendIx)
+-- @
+fromRationalRepetend
+    :: Maybe Int
+    -> Rational
+    -> Either (Scientific, Rational)
+              (Scientific, Maybe Int)
+fromRationalRepetend mbLimit rational
+        | d == 0    = throw DivideByZero
+        | num < 0   = case longDiv (-num) of
+                        Left  (s, r)  -> Left  (-s, -r)
+                        Right (s, mb) -> Right (-s, mb)
+        | otherwise = longDiv num
+      where
+        num = numerator rational
+
+        longDiv :: Integer -> Either (Scientific, Rational) (Scientific, Maybe Int)
+        longDiv n = case mbLimit of
+                      Nothing -> Right $ longDivNoLimit 0 0 M.empty n
+                      Just l  -> longDivWithLimit (-l) n
+
+        -- Divide the numerator by the denominator using long division.
+        longDivNoLimit :: Integer
+                       -> Int
+                       -> M.Map Integer Int
+                       -> (Integer -> (Scientific, Maybe Int))
+        longDivNoLimit !c !e _ns 0 = (Scientific c e, Nothing)
+        longDivNoLimit !c !e  ns !n
+            | Just e' <- M.lookup n ns = (Scientific c e, Just (-e'))
+            | n < d     = longDivNoLimit (c * 10) (e - 1) (M.insert n e ns) (n * 10)
+            | otherwise = case n `quotRemInteger` d of
+                            (#q, r#) -> longDivNoLimit (c + q) e ns r
+
+        longDivWithLimit :: Int -> Integer -> Either (Scientific, Rational) (Scientific, Maybe Int)
+        longDivWithLimit l = go 0 0 M.empty
+            where
+              go :: Integer
+                 -> Int
+                 -> M.Map Integer Int
+                 -> (Integer -> Either (Scientific, Rational) (Scientific, Maybe Int))
+              go !c !e _ns 0 = Right (Scientific c e, Nothing)
+              go !c !e  ns !n
+                  | Just e' <- M.lookup n ns = Right (Scientific c e, Just (-e'))
+                  | e <= l    = Left (Scientific c e, n % (d * magnitude (-e)))
+                  | n < d     = go (c * 10) (e - 1) (M.insert n e ns) (n * 10)
+                  | otherwise = case n `quotRemInteger` d of
+                                  (#q, r#) -> go (c + q) e ns r
+
+        d = denominator rational
+
+-- |
+-- Converts a `Scientific` with a /repetend/ (a repeating part in the fraction),
+-- which starts at the given index, into its corresponding 'Rational'.
+--
+-- The algorithm used is described in the paper:
+-- [turning_repeating_decimals_into_fractions.pdf](http://fiziko.bureau42.com/teaching_tidbits/turning_repeating_decimals_into_fractions.pdf)
+--
+-- For example: @toRationalRepetend 0.03571428 2 == 1 % 28@
+--
+-- Preconditions for @toRationalRepetend s r@:
+--
+-- * @r >= 0@
+--
+-- * @r < -(base10Exponent s)@
+--
+-- Also see: 'fromRationalRepetend'.
+toRationalRepetend :: Scientific -> Int -> Rational
+toRationalRepetend s r
+    | r < 0  = error "toRationalRepetend: Negative repetend index!"
+    | r >= f = error "toRationalRepetend: Repetend index >= than number of digits in the fractional part!"
+    | otherwise = (fromInteger nonRepetend + repetend % nines) /
+                  fromInteger (magnitude r)
+  where
+    c  = coefficient s
+    e  = base10Exponent s
+
+    -- f is the size of the fractional part.
+    f = (-e)
+
+    -- n is the size of the repetend
+    n = f - r
+
+    m = magnitude n
+
+    (#nonRepetend, repetend#) = c `quotRemInteger` m
+
+    nines = m - 1
 
 instance RealFrac Scientific where
     -- | The function 'properFraction' takes a Scientific number @s@

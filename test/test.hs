@@ -10,7 +10,9 @@
 
 module Main where
 
+#if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
+#endif
 import           Control.Monad
 import           Data.Int
 import           Data.Word
@@ -148,7 +150,15 @@ main = testMain $ testGroup "scientific"
     ]
 
   , testGroup "Conversions"
-    [ testGroup "Float"  $ conversionsProperties (undefined :: Float)
+    [ testProperty "fromRationalRepetend" $ \(l, r) -> r ==
+        (case fromRationalRepetend (Just l) r of
+          Left (s, rr) -> toRational s + rr
+          Right (s, mbRepetend) ->
+            case mbRepetend of
+              Nothing       -> toRational s
+              Just repetend -> toRationalRepetend s repetend)
+
+    , testGroup "Float"  $ conversionsProperties (undefined :: Float)
     , testGroup "Double" $ conversionsProperties (undefined :: Double)
 
     , testGroup "floatingOrInteger"
