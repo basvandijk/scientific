@@ -96,6 +96,7 @@ import           Control.Exception            (throw, ArithException(DivideByZer
 import           Control.Monad                (mplus)
 import           Control.Monad.ST             (runST)
 import           Control.DeepSeq              (NFData(rnf))
+import           Data.Binary                  (Binary, get, put)
 import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
 import           Data.Function                (on)
@@ -116,6 +117,7 @@ import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 
 #if !MIN_VERSION_base(4,8,0)
 import           Data.Functor                 ((<$>))
+import           Control.Applicative          ((<*>))
 #endif
 
 #if MIN_VERSION_base(4,5,0)
@@ -172,6 +174,16 @@ instance NFData Scientific where
 
 instance Hashable Scientific where
     hashWithSalt salt = hashWithSalt salt . toRational
+
+instance Binary Scientific where
+    put (Scientific c e) = do
+      put c
+      -- In the future I intend to change the type of the base10Exponent e from
+      -- Int to Integer. To support backward compatability I already convert e
+      -- to Integer here:
+      put $ toInteger e
+
+    get = Scientific <$> get <*> (fromInteger <$> get)
 
 instance Eq Scientific where
     (==) = (==) `on` toRational

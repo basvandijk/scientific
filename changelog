@@ -3,6 +3,7 @@
 	  for safely converting from and to rationals
 	  which have a repeating decimal representation like:
 	  1 % 28 = 0.03(571428).
+	* Added a Binary instance.
 	* Various performance improvements.
 	* Support vector-0.11
 	* Support tasty-0.11

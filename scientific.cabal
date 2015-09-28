@@ -72,6 +72,7 @@ library
                      , hashable    >= 1.1.2 && < 1.3
                      , vector      >= 0.5   && < 0.12
                      , containers  >= 0.5   && < 0.6
+                     , binary      >= 0.4.1 && < 0.8
 
   if flag(integer-simple)
       build-depends: integer-simple
@@ -98,6 +99,7 @@ test-suite test-scientific
 
   build-depends: scientific
                , base             >= 4.3   && < 4.9
+               , binary           >= 0.4.1 && < 0.8
                , tasty            >= 0.5   && < 0.12
                , tasty-ant-xml    >= 1.0   && < 1.1
                , tasty-hunit      >= 0.8   && < 0.10

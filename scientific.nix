@@ -1,4 +1,4 @@
-{ mkDerivation, base, bytestring, containers, deepseq, ghc-prim
+{ mkDerivation, base, binary, bytestring, containers, deepseq, ghc-prim
 , hashable, integer-gmp, QuickCheck, smallcheck, stdenv, tasty
 , tasty-ant-xml, tasty-hunit, tasty-quickcheck, tasty-smallcheck
 , text, vector
@@ -8,7 +8,7 @@ mkDerivation {
   version = "0.3.4.0";
   src = ./.;
   libraryHaskellDepends = [
-    base bytestring containers deepseq ghc-prim hashable integer-gmp
+    base binary bytestring containers deepseq ghc-prim hashable integer-gmp
     text vector
   ];
   testHaskellDepends = [
