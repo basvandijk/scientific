@@ -317,7 +317,7 @@ instance Fractional Scientific where
 -- Here the repetend is enclosed in parantheses and starts at the 3rd digit (index 2)
 -- in the fractional part. Specifying a limit results in the following:
 --
--- @fromRationalRepetend (Just 4) (1 % 28) == Left (3.5e-2,1 % 1400)@
+-- @fromRationalRepetend (Just 4) (1 % 28) == Left (3.5e-2, 1 % 1400)@
 --
 -- You can expect the following property to hold.
 --
@@ -382,7 +382,7 @@ fromRationalRepetend mbLimit rational
 -- which starts at the given index, into its corresponding 'Rational'.
 --
 -- The algorithm used is described in the paper:
--- [turning_repeating_decimals_into_fractions.pdf](http://fiziko.bureau42.com/teaching_tidbits/turning_repeating_decimals_into_fractions.pdf)
+-- <http://fiziko.bureau42.com/teaching_tidbits/turning_repeating_decimals_into_fractions.pdf turning_repeating_decimals_into_fractions.pdf>
 --
 -- For example: @toRationalRepetend 0.03571428 2 == 1 % 28@
 --
