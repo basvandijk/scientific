@@ -381,10 +381,8 @@ fromRationalRepetend mbLimit rational
 -- Converts a `Scientific` with a /repetend/ (a repeating part in the fraction),
 -- which starts at the given index, into its corresponding 'Rational'.
 --
--- The algorithm used is described in the paper:
--- <http://fiziko.bureau42.com/teaching_tidbits/turning_repeating_decimals_into_fractions.pdf turning_repeating_decimals_into_fractions.pdf>
---
--- For example: @toRationalRepetend 0.03571428 2 == 1 % 28@
+-- For example to convert the repeating decimal @0.03(571428)@ you would use:
+-- @toRationalRepetend 0.03571428 2 == 1 % 28@
 --
 -- Preconditions for @toRationalRepetend s r@:
 --
@@ -392,6 +390,30 @@ fromRationalRepetend mbLimit rational
 --
 -- * @r < -(base10Exponent s)@
 --
+-- The formula to convert the @Scientific@ @s@
+-- with a repetend starting at index @r@ is described in the paper:
+-- <http://fiziko.bureau42.com/teaching_tidbits/turning_repeating_decimals_into_fractions.pdf turning_repeating_decimals_into_fractions.pdf>
+-- and is defined as follows:
+--
+-- @
+--   (fromInteger nonRepetend + repetend % nines) /
+--   fromInteger (10^^r)
+-- where
+--   c  = coefficient s
+--   e  = base10Exponent s
+--
+--   -- Size of the fractional part.
+--   f = (-e)
+--
+--   -- Size of the repetend.
+--   n = f - r
+--
+--   m = 10^^n
+--
+--   (nonRepetend, repetend) = c \`quotRem\` m
+--
+--   nines = m - 1
+-- @
 -- Also see: 'fromRationalRepetend'.
 toRationalRepetend :: Scientific -> Int -> Rational
 toRationalRepetend s r
@@ -403,10 +425,10 @@ toRationalRepetend s r
     c  = coefficient s
     e  = base10Exponent s
 
-    -- f is the size of the fractional part.
+    -- Size of the fractional part.
     f = (-e)
 
-    -- n is the size of the repetend
+    -- Size of the repetend.
     n = f - r
 
     m = magnitude n
