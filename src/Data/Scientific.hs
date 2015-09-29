@@ -15,15 +15,16 @@
 -- License     :  BSD3
 -- Maintainer  :  Bas van Dijk <v.dijk.bas@gmail.com>
 --
--- @Data.Scientific@ provides a space efficient and arbitrary precision
--- scientific number type.
+-- This module provides the number type 'Scientific'. Scientific numbers are
+-- arbitrary precision and space efficient. They are represented using
+-- <http://en.wikipedia.org/wiki/Scientific_notation scientific notation>. The
+-- implementation uses an 'Integer' 'coefficient' @c@ and an 'Int'
+-- 'base10Exponent' @e@. A scientific number corresponds to the 'Fractional'
+-- number: @'fromInteger' c * 10 '^^' e@.
 --
--- 'Scientific' numbers are represented using
--- <http://en.wikipedia.org/wiki/Scientific_notation scientific notation>. It
--- uses an 'Integer' 'coefficient' @c@ and an 'Int' 'base10Exponent' @e@ (do
--- note that since we're using an 'Int' to represent the exponent these numbers
--- aren't truly arbitrary precision). A scientific number corresponds to the
--- 'Fractional' number: @'fromInteger' c * 10 '^^' e@.
+-- Note that since we're using an 'Int' to represent the exponent these numbers
+-- aren't truly arbitrary precision. I intend to change the type of the exponent
+-- to 'Integer' in a future release.
 --
 -- The main application of 'Scientific' is to be used as the target of parsing
 -- arbitrary precision numbers coming from an untrusted source. The advantages
@@ -263,8 +264,7 @@ instance Real Scientific where
    realToFrac = toRealFloat :: Scientific -> Float #-}
 
 -- | /WARNING:/ 'recip' and '/' will diverge (i.e. loop and consume all space)
--- when their outputs have an
--- [infinitely repeating decimal representation](https://en.wikipedia.org/wiki/Repeating_decimal), a so called /repeating decimal/.
+-- when their outputs are <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>.
 --
 -- 'fromRational' will diverge when the input 'Rational' is a repeating decimal.
 -- Consider using 'fromRationalRepetend' for these rationals which will detect
@@ -293,14 +293,14 @@ instance Fractional Scientific where
 
 -- | Like 'fromRational', this function converts a `Rational` to a `Scientific`
 -- but instead of diverging (i.e loop and consume all space) on
--- [repeating decimals](https://en.wikipedia.org/wiki/Repeating_decimal)
+-- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>
 -- it detects the repeating part, the /repetend/, and returns where it starts.
 --
 -- To detect the repetition this function consumes space linear in the number of
 -- digits in the resulting scientific. In order to bound the space usage an
 -- optional limit can be specified. If the number of digits reaches this limit
 -- @Left (s, r)@ will be returned. Here @s@ is the 'Scientific' constructed so
--- far and @r@ is the remaining 'Rational'. @toRational s + r@ should yield the
+-- far and @r@ is the remaining 'Rational'. @toRational s + r@ yields the
 -- original 'Rational'
 --
 -- If the limit is not reached or no limit was specified @Right (s,
@@ -314,7 +314,7 @@ instance Fractional Scientific where
 --
 -- This represents the repeating decimal: @0.03571428571428571428...@
 -- which is sometimes also unambiguously denoted as @0.03(571428)@.
--- Here the repetend is enclosed in parantheses and starts at the 3rd digit (index 2)
+-- Here the repetend is enclosed in parentheses and starts at the 3rd digit (index 2)
 -- in the fractional part. Specifying a limit results in the following:
 --
 -- @fromRationalRepetend (Just 4) (1 % 28) == Left (3.5e-2, 1 % 1400)@
@@ -330,7 +330,7 @@ instance Fractional Scientific where
 --            Just repetendIx -> 'toRationalRepetend' s repetendIx)
 -- @
 fromRationalRepetend
-    :: Maybe Int
+    :: Maybe Int -- ^ Optional limit
     -> Rational
     -> Either (Scientific, Rational)
               (Scientific, Maybe Int)
@@ -415,7 +415,10 @@ fromRationalRepetend mbLimit rational
 --   nines = m - 1
 -- @
 -- Also see: 'fromRationalRepetend'.
-toRationalRepetend :: Scientific -> Int -> Rational
+toRationalRepetend
+    :: Scientific
+    -> Int -- ^ Repetend index
+    -> Rational
 toRationalRepetend s r
     | r < 0  = error "toRationalRepetend: Negative repetend index!"
     | r >= f = error "toRationalRepetend: Repetend index >= than number of digits in the fractional part!"

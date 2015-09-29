@@ -2,15 +2,16 @@ name:                scientific
 version:             0.3.4.0
 synopsis:            Numbers represented using scientific notation
 description:
-  @Data.Scientific@ provides a space efficient and arbitrary precision
-  scientific number type.
-  .
-  'Scientific' numbers are represented using
-  <http://en.wikipedia.org/wiki/Scientific_notation scientific notation>. It
-  uses a coefficient @c :: 'Integer'@ and a base-10 exponent @e :: 'Int'@ (do
-  note that since we're using an 'Int' to represent the exponent these numbers
-  aren't truly arbitrary precision). A scientific number corresponds to the
+  @Data.Scientific@ provides the number type 'Scientific'. Scientific numbers are
+  arbitrary precision and space efficient. They are represented using
+  <http://en.wikipedia.org/wiki/Scientific_notation scientific notation>.
+  The implementation uses a coefficient @c :: 'Integer'@ and a base-10 exponent
+  @e :: 'Int'@. A scientific number corresponds to the
   'Fractional' number: @'fromInteger' c * 10 '^^' e@.
+  .
+  Note that since we're using an 'Int' to represent the exponent these numbers
+  aren't truly arbitrary precision. I intend to change the type of the exponent
+  to 'Integer' in a future release.
   .
   The main application of 'Scientific' is to be used as the target of parsing
   arbitrary precision numbers coming from an untrusted source. The advantages
