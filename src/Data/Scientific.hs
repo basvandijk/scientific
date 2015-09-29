@@ -300,7 +300,7 @@ instance Fractional Scientific where
 -- digits in the resulting scientific. In order to bound the space usage an
 -- optional limit can be specified. If the number of digits reaches this limit
 -- @Left (s, r)@ will be returned. Here @s@ is the 'Scientific' constructed so
--- far and @r@ is the remaining 'Rational'. @toRational s + r@ should yield to
+-- far and @r@ is the remaining 'Rational'. @toRational s + r@ should yield the
 -- original 'Rational'
 --
 -- If the limit is not reached or no limit was specified @Right (s,
