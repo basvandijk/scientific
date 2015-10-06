@@ -5,10 +5,6 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE PatternGuards #-}
 
-#ifdef GENERICS
-{-# LANGUAGE DeriveGeneric #-}
-#endif
-
 -- |
 -- Module      :  Data.Scientific
 -- Copyright   :  Bas van Dijk 2013
