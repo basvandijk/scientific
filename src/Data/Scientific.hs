@@ -102,7 +102,7 @@ import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
 import           Data.Function                (on)
 import           Data.Hashable                (Hashable(..))
-import qualified Data.Map.Strict     as M     (Map, empty, insert, lookup)
+import qualified Data.Map            as M     (Map, empty, insert, lookup)
 import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
 import qualified Data.Vector         as V
@@ -127,10 +127,16 @@ import           Data.Bits                    (unsafeShiftR)
 import           Data.Bits                    (shiftR)
 #endif
 
-import GHC.Integer (quotRemInteger, divInteger, quotInteger)
+import GHC.Integer (quotRemInteger, quotInteger)
 
 import Utils (roundTo)
 
+#if MIN_VERSION_integer_gmp(0,5,1)
+import GHC.Integer (divInteger)
+#else
+divInteger :: Integer -> Integer -> Integer
+divInteger = div
+#endif
 
 ----------------------------------------------------------------------
 -- Type
@@ -983,5 +989,6 @@ normalize (Scientific c e)
 
 normalizePositive :: Integer -> Int -> (Integer, Int)
 normalizePositive c !e = case quotRemInteger c 10 of
-                           (# c', 0 #) -> normalizePositive c' (e+1)
-                           _           -> (c, e)
+                           (# c', r #)
+                               | r == 0    -> normalizePositive c' (e+1)
+                               | otherwise -> (c, e)
