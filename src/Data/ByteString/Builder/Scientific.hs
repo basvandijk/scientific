@@ -22,6 +22,8 @@ import           Data.ByteString.Builder (Builder, string8, char8, intDec)
 import           Data.ByteString.Builder.Extra (byteStringCopy)
 #endif
 
+import Utils (roundTo, i2d)
+
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                  (mempty)
 #endif
@@ -35,7 +37,6 @@ import Data.Monoid                  (Monoid, mappend)
 infixr 6 <>
 #endif
 
-import Utils (roundTo, i2d)
 
 -- | A @ByteString@ @Builder@ which renders a scientific number to full
 -- precision, using standard decimal notation for arguments whose
