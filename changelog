@@ -1,3 +1,7 @@
+0.3.4.2
+	* Fix build on GHC-7.4.
+	  Courtesy of Adam Bergmark..
+
 0.3.4.1
 	* Fix build on GHC-7.0.4
 
