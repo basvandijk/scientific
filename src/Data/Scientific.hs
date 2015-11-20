@@ -127,11 +127,11 @@ import GHC.Integer (quotRemInteger, quotInteger)
 
 import Utils (roundTo)
 
-#if MIN_VERSION_integer_gmp(0,5,1)
-import GHC.Integer (divInteger)
-#else
+#if INTEGER_SIMPLE
 divInteger :: Integer -> Integer -> Integer
 divInteger = div
+#else
+import GHC.Integer (divInteger)
 #endif
 
 ----------------------------------------------------------------------
