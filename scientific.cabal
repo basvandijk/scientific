@@ -1,5 +1,5 @@
 name:                scientific
-version:             0.3.4.2
+version:             0.3.4.3
 synopsis:            Numbers represented using scientific notation
 description:
   @Data.Scientific@ provides the number type 'Scientific'. Scientific numbers are
@@ -64,6 +64,7 @@ library
                        Data.Text.Lazy.Builder.Scientific
   other-modules:       Math.NumberTheory.Logarithms
                        GHC.Integer.Logarithms.Compat
+                       GHC.Integer.Compat
                        Utils
   other-extensions:    DeriveDataTypeable, BangPatterns
   ghc-options:         -Wall

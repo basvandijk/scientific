@@ -123,16 +123,10 @@ import           Data.Bits                    (unsafeShiftR)
 import           Data.Bits                    (shiftR)
 #endif
 
-import GHC.Integer (quotRemInteger, quotInteger)
+import GHC.Integer        (quotRemInteger, quotInteger)
+import GHC.Integer.Compat (divInteger)
+import Utils              (roundTo)
 
-import Utils (roundTo)
-
-#if MIN_VERSION_integer_gmp(0,5,1)
-import GHC.Integer (divInteger)
-#else
-divInteger :: Integer -> Integer -> Integer
-divInteger = div
-#endif
 
 ----------------------------------------------------------------------
 -- Type
