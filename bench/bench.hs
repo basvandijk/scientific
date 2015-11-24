@@ -36,6 +36,10 @@ main = defaultMain
          [ bench "round"        (nf (round :: Scientific -> Integer) $! pos)
          , bench "roundDefault" (nf roundDefault                     $! pos)
          ]
+
+       , bgroup "toDecimalDigits"
+         [ bench "big" (nf toDecimalDigits $! big)
+         ]
        ]
     where
       pos :: Fractional a => a
@@ -49,6 +53,9 @@ main = defaultMain
 
       negInt :: Fractional a => a
       negInt = -int
+
+      big :: Scientific
+      big = read $ "0." ++ concat (replicate 20 "0123456789")
 
 realToFracStoD :: Scientific -> Double
 realToFracStoD = fromRational . toRational

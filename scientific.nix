@@ -1,7 +1,7 @@
 { mkDerivation, base, binary, bytestring, containers, deepseq, ghc-prim
 , hashable, integer-gmp, QuickCheck, smallcheck, stdenv, tasty
 , tasty-ant-xml, tasty-hunit, tasty-quickcheck, tasty-smallcheck
-, text, vector
+, text, vector, criterion
 }:
 mkDerivation {
   pname = "scientific";
@@ -14,6 +14,8 @@ mkDerivation {
   testHaskellDepends = [
     base bytestring QuickCheck smallcheck tasty tasty-ant-xml
     tasty-hunit tasty-quickcheck tasty-smallcheck text
+
+    criterion
   ];
   homepage = "https://github.com/basvandijk/scientific";
   description = "Numbers represented using scientific notation";

@@ -92,7 +92,7 @@ module Data.Scientific
 import           Control.Exception            (throw, ArithException(DivideByZero))
 import           Control.Monad                (mplus)
 import           Control.Monad.ST             (runST)
-import           Control.DeepSeq              (NFData(rnf))
+import           Control.DeepSeq              (NFData, rnf)
 import           Data.Binary                  (Binary, get, put)
 import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
@@ -947,19 +947,14 @@ toDecimalDigits :: Scientific -> ([Int], Int)
 toDecimalDigits (Scientific 0  _)  = ([0], 1)
 toDecimalDigits (Scientific c' e') =
     case normalizePositive c' e' of
-      (c, e) -> case reverseAndLength $ digits c of
-                  (is, n) -> (is, n + e)
-  where
-    digits :: Integer -> [Int]
-    digits 0 = []
-    digits i = case i `quotRemInteger` 10 of
-                 (# q, r #) -> fromIntegral r : digits q
-
-    reverseAndLength :: [a] -> ([a], Int)
-    reverseAndLength l = rev l [] 0
-      where
-        rev []     a !m = (a, m)
-        rev (x:xs) a !m = rev xs (x:a) (m+1)
+      Scientific c e -> go c 0 []
+        where
+          go :: Integer -> Int -> [Int] -> ([Int], Int)
+          go 0 !n ds = (ds, ne) where !ne = n + e
+          go i !n ds = case i `quotRemInteger` 10 of
+                         (# q, r #) -> go q (n+1) (d:ds)
+                           where
+                             !d = fromIntegral r
 
 
 ----------------------------------------------------------------------
@@ -973,12 +968,12 @@ toDecimalDigits (Scientific c' e') =
 -- automatically normalized when pretty-printed and in 'toDecimalDigits'.
 normalize :: Scientific -> Scientific
 normalize (Scientific c e)
-    | c > 0 = case normalizePositive   c  e of (c', e') -> Scientific   c'  e'
-    | c < 0 = case normalizePositive (-c) e of (c', e') -> Scientific (-c') e'
+    | c > 0 =   normalizePositive   c  e
+    | c < 0 = -(normalizePositive (-c) e)
     | otherwise {- c == 0 -} = Scientific 0 0
 
-normalizePositive :: Integer -> Int -> (Integer, Int)
-normalizePositive c !e = case quotRemInteger c 10 of
-                           (# c', r #)
-                               | r == 0    -> normalizePositive c' (e+1)
-                               | otherwise -> (c, e)
+normalizePositive :: Integer -> Int -> Scientific
+normalizePositive !c !e = case quotRemInteger c 10 of
+                            (# c', r #)
+                                | r == 0    -> normalizePositive c' (e+1)
+                                | otherwise -> Scientific c e
