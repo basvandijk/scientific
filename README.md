@@ -1,3 +1,6 @@
+[![Hackage](https://img.shields.io/hackage/v/scientific.svg)](https://hackage.haskell.org/package/scientific)
+[![Build Status](https://travis-ci.org/basvandijk/scientific.svg)](https://travis-ci.org/basvandijk/scientific)
+
 `Data.Scientific` provides a space efficient and arbitrary precision
 scientific number type.
 
