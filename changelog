@@ -1,3 +1,10 @@
+0.3.4.5
+	The following are all a courtesy of Oleg Grenrus (phadej):
+
+	* Support GHC-8.0.1
+	* Support binary-0.8
+	* Enable Travis continuous integration
+
 0.3.4.4
 	* Improved performance of toDecimalDigits by 13%.
 

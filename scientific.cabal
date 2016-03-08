@@ -1,5 +1,5 @@
 name:                scientific
-version:             0.3.4.4
+version:             0.3.4.5
 synopsis:            Numbers represented using scientific notation
 description:
   @Data.Scientific@ provides the number type 'Scientific'. Scientific numbers are
