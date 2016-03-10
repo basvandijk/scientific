@@ -629,7 +629,7 @@ fromFloatDigits = positivize fromPositiveRealFloat
           (digits, e) = Numeric.floatToDigits 10 r
 
           go []     !c !n = Scientific c (e - n)
-          go (d:ds) !c !n = go ds (c * 10 + fromIntegral d) (n + 1)
+          go (d:ds) !c !n = go ds (c * 10 + toInteger d) (n + 1)
 
 -- | Safely convert a 'Scientific' number into a 'RealFloat' (like a 'Double' or a
 -- 'Float').
