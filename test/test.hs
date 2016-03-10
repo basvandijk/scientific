@@ -29,6 +29,7 @@ import qualified Data.Binary                        as Binary (encode, decode)
 import qualified Data.Text.Lazy                     as TL  (unpack)
 import qualified Data.Text.Lazy.Builder             as TLB (toLazyText)
 import qualified Data.Text.Lazy.Builder.Scientific  as T
+import           Numeric ( floatToDigits )
 
 #ifdef BYTESTRING_BUILDER
 import qualified Data.ByteString.Lazy.Char8         as BLC8
@@ -66,9 +67,15 @@ main = testMain $ testGroup "scientific"
   , testGroup "Formatting"
     [ testProperty "read . show == id" $ \s -> read (show s) === s
 
-    , smallQuick "toDecimalDigits_laws"
-        (SC.over   nonNegativeScientificSeries toDecimalDigits_laws)
-        (QC.forAll nonNegativeScientificGen    toDecimalDigits_laws)
+    , testGroup "toDecimalDigits"
+      [ smallQuick "laws"
+          (SC.over   nonNegativeScientificSeries toDecimalDigits_laws)
+          (QC.forAll nonNegativeScientificGen    toDecimalDigits_laws)
+
+      , smallQuick "== Numeric.floatToDigits"
+          (toDecimalDigits_eq_floatToDigits . SC.getNonNegative)
+          (toDecimalDigits_eq_floatToDigits . QC.getNonNegative)
+      ]
 
     , testGroup "Builder"
       [ testProperty "Text" $ \s ->
@@ -222,6 +229,11 @@ testReads inp out = reads inp @?= out
 
 genericIsFloating :: RealFrac a => a -> Bool
 genericIsFloating a = fromInteger (floor a :: Integer) /= a
+
+toDecimalDigits_eq_floatToDigits :: Double -> Bool
+toDecimalDigits_eq_floatToDigits d =
+    Scientific.toDecimalDigits (Scientific.fromFloatDigits d)
+      == Numeric.floatToDigits 10 d
 
 conversionsProperties :: forall realFloat.
                          ( RealFloat    realFloat

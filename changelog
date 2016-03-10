@@ -1,3 +1,19 @@
+0.3.4.6
+	* Made toDecimalDigits more similar to floatToDigits
+
+	  Previously:
+
+	    toDecimalDigits 0 == ([0],1)
+
+	  Now:
+
+	    toDecimalDigits 0 == ([0],0)
+
+	  Because:
+
+	    Numeric.floatToDigits 10 (0 :: Double) == ([0],0)
+
+
 0.3.4.5
 	The following are all a courtesy of Oleg Grenrus (phadej):
 

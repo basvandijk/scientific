@@ -944,7 +944,7 @@ formatScientific format mbDecs s
 -- The last property means that the coefficient will be normalized, i.e. doesn't
 -- contain trailing zeros.
 toDecimalDigits :: Scientific -> ([Int], Int)
-toDecimalDigits (Scientific 0  _)  = ([0], 1)
+toDecimalDigits (Scientific 0  _)  = ([0], 0)
 toDecimalDigits (Scientific c' e') =
     case normalizePositive c' e' of
       Scientific c e -> go c 0 []
