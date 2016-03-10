@@ -14,6 +14,12 @@
 	    Numeric.floatToDigits 10 (0 :: Double) == ([0],0)
 
 
+	* Introduce a special case for 0 in fromFloatDigits
+
+	    fromFloatDigits 0 = 0
+
+	  This should fix https://github.com/bos/aeson/issues/369
+
 0.3.4.5
 	The following are all a courtesy of Oleg Grenrus (phadej):
 

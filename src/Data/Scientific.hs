@@ -622,7 +622,8 @@ magnitude e | e < maxExpt = cachedPow10 e
 -- algorithm doesn't know in which direction the short decimal representation
 -- would be rounded and computes more digits
 fromFloatDigits :: (RealFloat a) => a -> Scientific
-fromFloatDigits = positivize fromPositiveRealFloat
+fromFloatDigits 0  = 0
+fromFloatDigits rf = positivize fromPositiveRealFloat rf
     where
       fromPositiveRealFloat r = go digits 0 0
         where
