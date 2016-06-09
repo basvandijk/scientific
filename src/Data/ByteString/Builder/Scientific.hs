@@ -12,15 +12,8 @@ import qualified Data.Scientific as Scientific
 import Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 
 import qualified Data.ByteString.Char8 as BC8
-
-#if !MIN_VERSION_bytestring(0,10,2)
-import           Data.ByteString.Lazy.Builder (Builder, string8, char8)
-import           Data.ByteString.Lazy.Builder.ASCII (intDec)
-import           Data.ByteString.Lazy.Builder.Extras (byteStringCopy)
-#else
 import           Data.ByteString.Builder (Builder, string8, char8, intDec)
 import           Data.ByteString.Builder.Extra (byteStringCopy)
-#endif
 
 import Utils (roundTo, i2d)
 

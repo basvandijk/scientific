@@ -31,16 +31,9 @@ import qualified Data.Text.Lazy.Builder             as TLB (toLazyText)
 import qualified Data.Text.Lazy.Builder.Scientific  as T
 import           Numeric ( floatToDigits )
 
-#ifdef BYTESTRING_BUILDER
 import qualified Data.ByteString.Lazy.Char8         as BLC8
 import qualified Data.ByteString.Builder.Scientific as B
-
-#if !MIN_VERSION_bytestring(0,10,2)
-import qualified Data.ByteString.Lazy.Builder       as B
-#else
 import qualified Data.ByteString.Builder            as B
-#endif
-#endif
 
 main :: IO ()
 main = testMain $ testGroup "scientific"
@@ -83,12 +76,10 @@ main = testMain $ testGroup "scientific"
           TL.unpack (TLB.toLazyText $
                        T.formatScientificBuilder Scientific.Generic Nothing s)
 
-#ifdef BYTESTRING_BUILDER
       , testProperty "ByteString" $ \s ->
           formatScientific Scientific.Generic Nothing s ==
           BLC8.unpack (B.toLazyByteString $
                         B.formatScientificBuilder Scientific.Generic Nothing s)
-#endif
       ]
 
     , testProperty "formatScientific_fromFloatDigits" $ \(d::Double) ->
