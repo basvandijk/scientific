@@ -49,12 +49,6 @@ source-repository head
   type:     git
   location: git://github.com/basvandijk/scientific.git
 
-flag bytestring-builder
-  description: Provide the Data.ByteString.Builder.Scientific module
-               (requires bytestring >= 0.10)
-  default:     True
-  manual:      True
-
 flag integer-simple
   description: Use the integer-simple package instead of integer-gmp
   default:     False
