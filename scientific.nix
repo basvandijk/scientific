@@ -5,7 +5,7 @@
 }:
 mkDerivation {
   pname = "scientific";
-  version = "0.3.4.0";
+  version = "HEAD";
   src = ./.;
   libraryHaskellDepends = [
     base binary bytestring containers deepseq ghc-prim hashable integer-gmp
