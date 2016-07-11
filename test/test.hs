@@ -252,7 +252,7 @@ conversionsProperties _ =
   ]
 
 toBoundedIntegerConversion
-    :: forall i. (Integral i, Bounded i, Show i)
+    :: forall i. (Integral i, Bounded i)
     => i -> Scientific -> Bool
 toBoundedIntegerConversion _ s =
     case toBoundedInteger s :: Maybe i of
