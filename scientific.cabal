@@ -1,5 +1,5 @@
 name:                scientific
-version:             0.3.4.9
+version:             0.3.4.10
 synopsis:            Numbers represented using scientific notation
 description:
   @Data.Scientific@ provides the number type 'Scientific'. Scientific numbers are
@@ -87,7 +87,6 @@ library
       CPP-options: -DINTEGER_SIMPLE
   else
       build-depends: integer-gmp
-
 
   hs-source-dirs:      src
   default-language:    Haskell2010

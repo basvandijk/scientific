@@ -1,3 +1,11 @@
+0.3.4.10
+	* Tighten lower bound on vector from 0.5 to 0.7 because building with
+	  vector < 0.7 results in a build error.
+
+	* Move the internal modules Math.NumberTheory.Logarithms and
+	  GHC.Integer.Logarithms.Compat to their own package integer-logarithms so
+	  other people can share that code.
+
 0.3.4.9
 	* Support QuickCheck-2.9.
 
