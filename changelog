@@ -1,3 +1,7 @@
+master
+	* Add Data.Scientific.Base which allows to parametrize the
+	  Scientific type with the base
+
 0.3.4.10
 	* Tighten lower bound on vector from 0.5 to 0.7 because building with
 	  vector < 0.7 results in a build error.

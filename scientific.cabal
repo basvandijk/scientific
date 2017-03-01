@@ -61,9 +61,9 @@ flag integer-simple
 library
   exposed-modules:     Data.ByteString.Builder.Scientific
                        Data.Scientific
+                       Data.Scientific.Base
                        Data.Text.Lazy.Builder.Scientific
-  other-modules:       GHC.Integer.Compat
-                       Utils
+  other-modules:       Utils
   other-extensions:    DeriveDataTypeable, BangPatterns
   ghc-options:         -Wall
   build-depends:       base        >= 4.3   && < 4.10
