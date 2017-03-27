@@ -1,5 +1,5 @@
 name:                scientific
-version:             0.3.4.10
+version:             0.3.4.11
 synopsis:            Numbers represented using scientific notation
 description:
   @Data.Scientific@ provides the number type 'Scientific'. Scientific numbers are
@@ -102,7 +102,7 @@ test-suite test-scientific
                , base             >= 4.3   && < 4.10
                , binary           >= 0.4.1 && < 0.9
                , tasty            >= 0.5   && < 0.12
-               , tasty-ant-xml    >= 1.0   && < 1.1
+               , tasty-ant-xml    >= 1.0   && < 1.2
                , tasty-hunit      >= 0.8   && < 0.10
                , tasty-smallcheck >= 0.2   && < 0.9
                , tasty-quickcheck >= 0.8   && < 0.9

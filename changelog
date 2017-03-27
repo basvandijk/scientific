@@ -1,3 +1,6 @@
+0.3.4.11
+	* Support tasty-ant-xml-1.1.0
+
 0.3.4.10
 	* Tighten lower bound on vector from 0.5 to 0.7 because building with
 	  vector < 0.7 results in a build error.
