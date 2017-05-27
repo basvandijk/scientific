@@ -1,5 +1,5 @@
 name:                scientific
-version:             0.3.4.12
+version:             0.3.4.13
 synopsis:            Numbers represented using scientific notation
 description:
   @Data.Scientific@ provides the number type 'Scientific'. Scientific numbers are
@@ -123,4 +123,4 @@ benchmark bench-scientific
   ghc-options:      -O2
   build-depends:    scientific
                   , base        >= 4.3   && < 4.11
-                  , criterion   >= 0.5   && < 1.2
+                  , criterion   >= 0.5   && < 1.3
