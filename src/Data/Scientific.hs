@@ -116,6 +116,7 @@ import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 
 #if !MIN_VERSION_base(4,8,0)
 import           Data.Functor                 ((<$>))
+import           Data.Word                    (Word)
 import           Control.Applicative          ((<*>))
 #endif
 
