@@ -1,3 +1,9 @@
+0.3.4.14
+	* Some minor performance improvements.
+
+0.3.4.13
+	* Support criterion-1.2
+
 0.3.4.12
 	* Support base-4.10
 

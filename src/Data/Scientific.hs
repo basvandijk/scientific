@@ -98,11 +98,13 @@ import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
 import           Data.Function                (on)
 import           Data.Hashable                (Hashable(..))
+import           Data.Int                     (Int8, Int16, Int32, Int64)
 import qualified Data.Map            as M     (Map, empty, insert, lookup)
 import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
 import qualified Data.Vector         as V
 import qualified Data.Vector.Mutable as VM
+import           Data.Word                    (Word8, Word16, Word32, Word64)
 import           Math.NumberTheory.Logarithms (integerLog10')
 import qualified Numeric                      (floatToDigits)
 import qualified Text.Read                       as Read
@@ -184,26 +186,26 @@ instance Binary Scientific where
 
 instance Eq Scientific where
     (==) = (==) `on` toRational
-    {-# INLINE (==) #-}
+    {-# INLINABLE (==) #-}
 
     (/=) = (/=) `on` toRational
-    {-# INLINE (/=) #-}
+    {-# INLINABLE (/=) #-}
 
 instance Ord Scientific where
     (<) = (<) `on` toRational
-    {-# INLINE (<) #-}
+    {-# INLINABLE (<) #-}
 
     (<=) = (<=) `on` toRational
-    {-# INLINE (<=) #-}
+    {-# INLINABLE (<=) #-}
 
     (>) = (>) `on` toRational
-    {-# INLINE (>) #-}
+    {-# INLINABLE (>) #-}
 
     (>=) = (>=) `on` toRational
-    {-# INLINE (>=) #-}
+    {-# INLINABLE (>=) #-}
 
     compare = compare `on` toRational
-    {-# INLINE compare #-}
+    {-# INLINABLE compare #-}
 
 instance Num Scientific where
     Scientific c1 e1 + Scientific c2 e2
@@ -212,7 +214,7 @@ instance Num Scientific where
          where
            l = magnitude (e2 - e1)
            r = magnitude (e1 - e2)
-    {-# INLINE (+) #-}
+    {-# INLINABLE (+) #-}
 
     Scientific c1 e1 - Scientific c2 e2
        | e1 < e2   = Scientific (c1   - c2*l) e1
@@ -220,23 +222,23 @@ instance Num Scientific where
          where
            l = magnitude (e2 - e1)
            r = magnitude (e1 - e2)
-    {-# INLINE (-) #-}
+    {-# INLINABLE (-) #-}
 
     Scientific c1 e1 * Scientific c2 e2 =
         Scientific (c1 * c2) (e1 + e2)
-    {-# INLINE (*) #-}
+    {-# INLINABLE (*) #-}
 
     abs (Scientific c e) = Scientific (abs c) e
-    {-# INLINE abs #-}
+    {-# INLINABLE abs #-}
 
     negate (Scientific c e) = Scientific (negate c) e
-    {-# INLINE negate #-}
+    {-# INLINABLE negate #-}
 
     signum (Scientific c _) = Scientific (signum c) 0
-    {-# INLINE signum #-}
+    {-# INLINABLE signum #-}
 
     fromInteger i = Scientific i 0
-    {-# INLINE fromInteger #-}
+    {-# INLINABLE fromInteger #-}
 
 -- | /WARNING:/ 'toRational' needs to compute the 'Integer' magnitude:
 -- @10^e@. If applied to a huge exponent this could fill up all space
@@ -249,7 +251,7 @@ instance Real Scientific where
     toRational (Scientific c e)
       | e < 0     =  c % magnitude (-e)
       | otherwise = (c * magnitude   e) % 1
-    {-# INLINE toRational #-}
+    {-# INLINABLE toRational #-}
 
 {-# RULES
   "realToFrac_toRealFloat_Double"
@@ -267,10 +269,10 @@ instance Real Scientific where
 -- the repetition and indicate where it starts.
 instance Fractional Scientific where
     recip = fromRational . recip . toRational
-    {-# INLINE recip #-}
+    {-# INLINABLE recip #-}
 
     x / y = fromRational $ toRational x / toRational y
-    {-# INLINE (/) #-}
+    {-# INLINABLE (/) #-}
 
     fromRational rational
         | d == 0    = throw DivideByZero
@@ -352,7 +354,8 @@ fromRationalRepetend mbLimit rational
         longDivNoLimit !c !e _ns 0 = (Scientific c e, Nothing)
         longDivNoLimit !c !e  ns !n
             | Just e' <- M.lookup n ns = (Scientific c e, Just (-e'))
-            | n < d     = longDivNoLimit (c * 10) (e - 1) (M.insert n e ns) (n * 10)
+            | n < d     = let !ns' = M.insert n e ns
+                          in longDivNoLimit (c * 10) (e - 1) ns' (n * 10)
             | otherwise = case n `quotRemInteger` d of
                             (#q, r#) -> longDivNoLimit (c + q) e ns r
 
@@ -367,7 +370,8 @@ fromRationalRepetend mbLimit rational
               go !c !e  ns !n
                   | Just e' <- M.lookup n ns = Right (Scientific c e, Just (-e'))
                   | e <= l    = Left (Scientific c e, n % (d * magnitude (-e)))
-                  | n < d     = go (c * 10) (e - 1) (M.insert n e ns) (n * 10)
+                  | n < d     = let !ns' = M.insert n e ns
+                                in go (c * 10) (e - 1) ns' (n * 10)
                   | otherwise = case n `quotRemInteger` d of
                                   (#q, r#) -> go (c + q) e ns r
 
@@ -450,7 +454,7 @@ instance RealFrac Scientific where
                       else case c `quotRemInteger` magnitude (-e) of
                              (#q, r#) -> (fromInteger q, Scientific r e)
         | otherwise = (toIntegral s, 0)
-    {-# INLINE properFraction #-}
+    {-# INLINABLE properFraction #-}
 
     -- | @'truncate' s@ returns the integer nearest @s@
     -- between zero and @s@
@@ -458,7 +462,7 @@ instance RealFrac Scientific where
                  if dangerouslySmall c e
                  then 0
                  else fromInteger $ c `quotInteger` magnitude (-e)
-    {-# INLINE truncate #-}
+    {-# INLINABLE truncate #-}
 
     -- | @'round' s@ returns the nearest integer to @s@;
     --   the even integer if @s@ is equidistant between two integers
@@ -475,7 +479,7 @@ instance RealFrac Scientific where
                         0  -> if even n then n else m
                         1  -> m
                         _  -> error "round default defn: Bad value"
-    {-# INLINE round #-}
+    {-# INLINABLE round #-}
 
     -- | @'ceiling' s@ returns the least integer not less than @s@
     ceiling = whenFloating $ \c e ->
@@ -486,7 +490,7 @@ instance RealFrac Scientific where
                 else case c `quotRemInteger` magnitude (-e) of
                        (#q, r#) | r <= 0    -> fromInteger q
                                 | otherwise -> fromInteger (q + 1)
-    {-# INLINE ceiling #-}
+    {-# INLINABLE ceiling #-}
 
     -- | @'floor' s@ returns the greatest integer not greater than @s@
     floor = whenFloating $ \c e ->
@@ -495,7 +499,7 @@ instance RealFrac Scientific where
                    then -1
                    else 0
               else fromInteger (c `divInteger` magnitude (-e))
-    {-# INLINE floor #-}
+    {-# INLINABLE floor #-}
 
 
 ----------------------------------------------------------------------
@@ -546,8 +550,8 @@ limit :: Int
 limit = maxExpt
 
 positivize :: (Ord a, Num a, Num b) => (a -> b) -> (a -> b)
-positivize f x | x < 0      = -(f (-x))
-               | otherwise =    f   x
+positivize f x | x < 0     = -(f (-x))
+               | otherwise =   f   x
 {-# INLINE positivize #-}
 
 whenFloating :: (Num a) => (Integer -> Int -> a) -> Scientific -> a
@@ -559,7 +563,7 @@ whenFloating f s@(Scientific c e)
 -- | Precondition: the 'Scientific' @s@ needs to be an integer:
 -- @base10Exponent (normalize s) >= 0@
 toIntegral :: (Num a) => Scientific -> a
-toIntegral (Scientific c e) = fromInteger c * magnitude e
+toIntegral (Scientific c e) = fromInteger c * fromInteger (magnitude e)
 {-# INLINE toIntegral #-}
 
 
@@ -593,14 +597,13 @@ expts10 = runST $ do
     go 2
 
 -- | @magnitude e == 10 ^ e@
-magnitude :: (Num a) => Int -> a
+magnitude :: Int -> Integer
 magnitude e | e < maxExpt = cachedPow10 e
             | otherwise   = cachedPow10 hi * 10 ^ (e - hi)
     where
-      cachedPow10 p = fromInteger (V.unsafeIndex expts10 p)
+      cachedPow10 = V.unsafeIndex expts10
 
       hi = maxExpt - 1
-{-# INLINE magnitude #-}
 
 
 ----------------------------------------------------------------------
@@ -629,8 +632,14 @@ fromFloatDigits rf = positivize fromPositiveRealFloat rf
         where
           (digits, e) = Numeric.floatToDigits 10 r
 
+          go :: [Int] -> Integer -> Int -> Scientific
           go []     !c !n = Scientific c (e - n)
           go (d:ds) !c !n = go ds (c * 10 + toInteger d) (n + 1)
+
+{-# INLINABLE fromFloatDigits #-}
+
+{-# SPECIALIZE fromFloatDigits :: Double -> Scientific #-}
+{-# SPECIALIZE fromFloatDigits :: Float  -> Scientific #-}
 
 -- | Safely convert a 'Scientific' number into a 'RealFloat' (like a 'Double' or a
 -- 'Float').
@@ -647,36 +656,46 @@ fromFloatDigits rf = positivize fromPositiveRealFloat rf
 toRealFloat :: (RealFloat a) => Scientific -> a
 toRealFloat = either id id . toBoundedRealFloat
 
+{-# INLINABLE toRealFloat #-}
+{-# INLINABLE toBoundedRealFloat #-}
+
+{-# SPECIALIZE toRealFloat        :: Scientific -> Double #-}
+{-# SPECIALIZE toRealFloat        :: Scientific -> Float  #-}
+{-# SPECIALIZE toBoundedRealFloat :: Scientific -> Either Double Double #-}
+{-# SPECIALIZE toBoundedRealFloat :: Scientific -> Either Float  Float  #-}
+
 -- | Preciser version of `toRealFloat`. If the 'base10Exponent' of the given
 -- 'Scientific' is too big or too small to be represented in the target type,
 -- Infinity or 0 will be returned as 'Left'.
 toBoundedRealFloat :: forall a. (RealFloat a) => Scientific -> Either a a
 toBoundedRealFloat s@(Scientific c e)
-    | c == 0                                       = Right 0
-    | e >  limit && e > hiLimit                    = Left  $ sign (1/0) -- Infinity
-    | e < -limit && e < loLimit && e + d < loLimit = Left  $ sign 0
-    | otherwise                                    = Right $ realToFrac s
+    | c == 0     = Right 0
+    | e >  limit = if e > hiLimit then Left $ sign (1/0) -- Infinity
+                   else Right $ fromRational ((c * magnitude e) % 1)
+    | e < -limit = if e < loLimit && e + d < loLimit then Left $ sign 0
+                   else Right $ fromRational (c % magnitude (-e))
+    | otherwise = Right $ fromRational (toRational s)
+                       -- We can't use realToFrac here
+                       -- because that will cause an infinite loop
+                       -- when the function is specialized for Double and Float
+                       -- caused by the realToFrac_toRealFloat_Double/Float rewrite RULEs.
   where
-    (loLimit, hiLimit) = exponentLimits (undefined :: a)
+    hiLimit, loLimit :: Int
+    hiLimit = ceiling (fromIntegral hi     * log10Radix)
+    loLimit = floor   (fromIntegral lo     * log10Radix) -
+              ceiling (fromIntegral digits * log10Radix)
+
+    log10Radix :: Double
+    log10Radix = logBase 10 $ fromInteger radix
+
+    radix    = floatRadix  (undefined :: a)
+    digits   = floatDigits (undefined :: a)
+    (lo, hi) = floatRange  (undefined :: a)
 
     d = integerLog10' (abs c)
 
     sign x | c < 0     = -x
            | otherwise =  x
-
-exponentLimits :: forall a. (RealFloat a) => a -> (Int, Int)
-exponentLimits _ = (loLimit, hiLimit)
-    where
-      loLimit = floor   (fromIntegral lo     * log10Radix) -
-                ceiling (fromIntegral digits * log10Radix)
-      hiLimit = ceiling (fromIntegral hi     * log10Radix)
-
-      log10Radix :: Double
-      log10Radix = logBase 10 $ fromInteger radix
-
-      radix    = floatRadix  (undefined :: a)
-      digits   = floatDigits (undefined :: a)
-      (lo, hi) = floatRange  (undefined :: a)
 
 -- | Convert a `Scientific` to a bounded integer.
 --
@@ -717,6 +736,17 @@ toBoundedInteger s
     -- since it could consume all space and crash the process:
     n :: Integer
     n = toIntegral s'
+
+{-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int #-}
+{-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int8 #-}
+{-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int16 #-}
+{-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int32 #-}
+{-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int64 #-}
+{-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Word #-}
+{-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Word8 #-}
+{-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Word16 #-}
+{-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Word32 #-}
+{-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Word64 #-}
 
 -- | @floatingOrInteger@ determines if the scientific is floating point
 -- or integer. In case it's floating-point the scientific is converted
