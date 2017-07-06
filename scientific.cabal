@@ -104,7 +104,7 @@ test-suite test-scientific
                , tasty-ant-xml    >= 1.0   && < 1.2
                , tasty-hunit      >= 0.8   && < 0.10
                , tasty-smallcheck >= 0.2   && < 0.9
-               , tasty-quickcheck >= 0.8   && < 0.9
+               , tasty-quickcheck >= 0.8   && < 0.10
                , smallcheck       >= 1.0   && < 1.2
                , QuickCheck       >= 2.5   && < 2.11
                , text             >= 0.8   && < 1.3
