@@ -74,6 +74,9 @@ module Data.Scientific
     , toBoundedInteger
     , fromFloatDigits
 
+      -- * Parsing
+    , scientificP
+
       -- * Pretty printing
     , formatScientific
     , FPFormat(..)
