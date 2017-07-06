@@ -1,3 +1,7 @@
+0.3.5.0
+	* Export scientificP :: ReadP Scientific
+	  (Courtesy of Shlok Datye @shlok)
+
 0.3.4.15
 	* Fix build for base < 4.8.
 
