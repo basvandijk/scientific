@@ -790,6 +790,13 @@ isInteger s = base10Exponent s  >= 0 ||
 -- Parsing
 ----------------------------------------------------------------------
 
+-- | Supports the skipping of parentheses and whitespaces. Example:
+--
+-- > > read " ( ((  -1.0e+3 ) ))" :: Scientific
+-- > -1000.0
+--
+-- (Note: This @Read@ instance makes internal use of
+-- 'scientificP' to parse the floating-point number.)
 instance Read Scientific where
     readPrec = Read.parens $ ReadPrec.lift (ReadP.skipSpaces >> scientificP)
 
