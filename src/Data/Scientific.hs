@@ -796,6 +796,21 @@ instance Read Scientific where
 -- A strict pair
 data SP = SP !Integer {-# UNPACK #-}!Int
 
+-- | A parser for parsing a floating-point
+-- number into a 'Scientific' value. Example:
+--
+-- > > import Text.ParserCombinators.ReadP (readP_to_S)
+-- > > readP_to_S scientificP "3"
+-- > [(3.0,"")]
+-- > > readP_to_S scientificP "3.0e2"
+-- > [(3.0,"e2"),(300.0,"")]
+-- > > readP_to_S scientificP "+3.0e+2"
+-- > [(3.0,"e+2"),(300.0,"")]
+-- > > readP_to_S scientificP "-3.0e-2"
+-- > [(-3.0,"e-2"),(-3.0e-2,"")]
+--
+-- Note: This parser only parses the number itself; it does
+-- not parse any surrounding parentheses or whitespaces.
 scientificP :: ReadP Scientific
 scientificP = do
   let positive = (('+' ==) <$> ReadP.satisfy isSign) `mplus` return True
