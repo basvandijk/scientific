@@ -105,8 +105,7 @@ import           Data.Int                     (Int8, Int16, Int32, Int64)
 import qualified Data.Map            as M     (Map, empty, insert, lookup)
 import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
-import qualified Data.Vector         as V
-import qualified Data.Vector.Mutable as VM
+import qualified Data.Primitive.Array as Primitive
 import           Data.Word                    (Word8, Word16, Word32, Word64)
 import           Math.NumberTheory.Logarithms (integerLog10')
 import qualified Numeric                      (floatToDigits)
@@ -579,20 +578,20 @@ toIntegral (Scientific c e) = fromInteger c * fromInteger (magnitude e)
 maxExpt :: Int
 maxExpt = 324
 
-expts10 :: V.Vector Integer
+expts10 :: Primitive.Array Integer
 expts10 = runST $ do
-    mv <- VM.unsafeNew maxExpt
-    VM.unsafeWrite mv 0  1
-    VM.unsafeWrite mv 1 10
+    ma <- Primitive.newArray maxExpt uninitialised
+    Primitive.writeArray ma 0  1
+    Primitive.writeArray ma 1 10
     let go !ix
-          | ix == maxExpt = V.unsafeFreeze mv
+          | ix == maxExpt = Primitive.unsafeFreezeArray ma
           | otherwise = do
-              VM.unsafeWrite mv  ix        xx
-              VM.unsafeWrite mv (ix+1) (10*xx)
+              Primitive.writeArray ma  ix        xx
+              Primitive.writeArray ma (ix+1) (10*xx)
               go (ix+2)
           where
             xx = x * x
-            x  = V.unsafeIndex expts10 half
+            x  = Primitive.indexArray expts10 half
 #if MIN_VERSION_base(4,5,0)
             !half = ix `unsafeShiftR` 1
 #else
@@ -600,12 +599,15 @@ expts10 = runST $ do
 #endif
     go 2
 
+uninitialised :: error
+uninitialised = error "Data.Scientific: uninitialised element"
+
 -- | @magnitude e == 10 ^ e@
 magnitude :: Int -> Integer
 magnitude e | e < maxExpt = cachedPow10 e
             | otherwise   = cachedPow10 hi * 10 ^ (e - hi)
     where
-      cachedPow10 = V.unsafeIndex expts10
+      cachedPow10 = Primitive.indexArray expts10
 
       hi = maxExpt - 1
 

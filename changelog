@@ -1,3 +1,6 @@
+0.3.5.1
+	* Replace use of Vector from vector with Array from primitive.
+
 0.3.5.0
 	* Export scientificP :: ReadP Scientific
 	  (Courtesy of Shlok Datye @shlok)
