@@ -34,6 +34,7 @@ import           Numeric ( floatToDigits )
 import qualified Data.ByteString.Lazy.Char8         as BLC8
 import qualified Data.ByteString.Builder.Scientific as B
 import qualified Data.ByteString.Builder            as B
+import           Text.ParserCombinators.ReadP (readP_to_S)
 
 main :: IO ()
 main = testMain $ testGroup "scientific"
@@ -55,6 +56,11 @@ main = testMain $ testGroup "scientific"
     , testCase "reads \"(1.3 )\""  $ testReads "(1.3 )"  [(1.3, "")]
     , testCase "reads \"((1.3))\"" $ testReads "((1.3))" [(1.3, "")]
     , testCase "reads \" 1.3\""    $ testReads " 1.3"    [(1.3, "")]
+    , testCase "read \" ( ((  -1.0e+3 ) ))\"" $ testRead " ( ((  -1.0e+3 ) ))" (-1000.0)
+    , testCase "scientificP \"3\""       $ testScientificP "3"       [(3.0, "")]
+    , testCase "scientificP \"3.0e2\""   $ testScientificP "3.0e2"   [(3.0, "e2"), (300.0, "")]
+    , testCase "scientificP \"+3.0e+2\"" $ testScientificP "+3.0e+2" [(3.0, "e+2"), (300.0, "")]
+    , testCase "scientificP \"-3.0e-2\"" $ testScientificP "-3.0e-2" [(-3.0, "e-2"), (-3.0e-2, "")]
     ]
 
   , testGroup "Formatting"
@@ -217,6 +223,12 @@ testMain = defaultMainWithIngredients (antXMLRunner:defaultIngredients)
 
 testReads :: String -> [(Scientific, String)] -> Assertion
 testReads inp out = reads inp @?= out
+
+testRead :: String -> Scientific -> Assertion
+testRead inp out = read inp @?= out
+
+testScientificP :: String -> [(Scientific, String)] -> Assertion
+testScientificP inp out = readP_to_S Scientific.scientificP inp @?= out
 
 genericIsFloating :: RealFrac a => a -> Bool
 genericIsFloating a = fromInteger (floor a :: Integer) /= a
