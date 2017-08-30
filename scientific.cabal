@@ -1,5 +1,5 @@
 name:                scientific
-version:             0.3.5.1
+version:             0.3.5.2
 synopsis:            Numbers represented using scientific notation
 description:
   @Data.Scientific@ provides the number type 'Scientific'. Scientific numbers are
@@ -67,7 +67,6 @@ library
   other-extensions:    DeriveDataTypeable, BangPatterns
   ghc-options:         -Wall
   build-depends:       base        >= 4.3   && < 4.11
-                     , ghc-prim
                      , integer-logarithms >= 1 && <1.1
                      , deepseq     >= 1.3   && < 1.5
                      , text        >= 0.8   && < 1.3

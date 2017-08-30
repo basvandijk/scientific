@@ -1,3 +1,7 @@
+0.3.5.2
+	* Remove unused ghc-prim dependency.
+	* Added unit tests for read and scientificP
+
 0.3.5.1
 	* Replace use of Vector from vector with Array from primitive.
 
