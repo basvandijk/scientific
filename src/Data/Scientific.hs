@@ -181,7 +181,7 @@ instance Binary Scientific where
     put (Scientific c e) = do
       put c
       -- In the future I intend to change the type of the base10Exponent e from
-      -- Int to Integer. To support backward compatability I already convert e
+      -- Int to Integer. To support backward compatibility I already convert e
       -- to Integer here:
       put $ toInteger e
 
