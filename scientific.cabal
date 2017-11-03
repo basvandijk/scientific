@@ -99,7 +99,7 @@ test-suite test-scientific
   build-depends: scientific
                , base             >= 4.3   && < 4.11
                , binary           >= 0.4.1 && < 0.9
-               , tasty            >= 0.5   && < 0.12
+               , tasty            >= 0.5   && < 0.13
                , tasty-ant-xml    >= 1.0   && < 1.2
                , tasty-hunit      >= 0.8   && < 0.10
                , tasty-smallcheck >= 0.2   && < 0.9
