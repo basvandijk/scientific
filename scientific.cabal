@@ -122,4 +122,4 @@ benchmark bench-scientific
   ghc-options:      -O2
   build-depends:    scientific
                   , base        >= 4.3   && < 4.11
-                  , criterion   >= 0.5   && < 1.3
+                  , criterion   >= 0.5   && < 1.4
