@@ -1,5 +1,5 @@
 name:                scientific
-version:             0.3.5.2
+version:             0.3.5.3
 synopsis:            Numbers represented using scientific notation
 description:
   "Data.Scientific" provides the number type 'Scientific'. Scientific numbers are
@@ -66,20 +66,20 @@ library
                        Utils
   other-extensions:    DeriveDataTypeable, BangPatterns
   ghc-options:         -Wall
-  build-depends:       base        >= 4.3   && < 4.12
-                     , integer-logarithms >= 1 && <1.1
-                     , deepseq     >= 1.3   && < 1.5
-                     , text        >= 0.8   && < 1.3
-                     , hashable    >= 1.1.2 && < 1.3
-                     , primitive   >= 0.1   && < 0.7
-                     , containers  >= 0.1   && < 0.6
-                     , binary      >= 0.4.1 && < 0.9
+  build-depends:       base        >= 4.3 && < 5
+                     , integer-logarithms >= 1
+                     , deepseq     >= 1.3
+                     , text        >= 0.8
+                     , hashable    >= 1.1.2
+                     , primitive   >= 0.1
+                     , containers  >= 0.1
+                     , binary      >= 0.4.1
 
   if flag(bytestring-builder)
       build-depends: bytestring         >= 0.9    && < 0.10.4
                    , bytestring-builder >= 0.10.4 && < 0.11
   else
-      build-depends: bytestring         >= 0.10.4 && < 0.11
+      build-depends: bytestring         >= 0.10.4
 
   if flag(integer-simple)
       build-depends: integer-simple
@@ -97,22 +97,22 @@ test-suite test-scientific
   ghc-options:      -Wall
 
   build-depends: scientific
-               , base             >= 4.3   && < 4.12
-               , binary           >= 0.4.1 && < 0.9
-               , tasty            >= 0.5   && < 1.1
-               , tasty-ant-xml    >= 1.0   && < 1.2
-               , tasty-hunit      >= 0.8   && < 0.11
-               , tasty-smallcheck >= 0.2   && < 0.9
-               , tasty-quickcheck >= 0.8   && < 0.10
-               , smallcheck       >= 1.0   && < 1.2
-               , QuickCheck       >= 2.5   && < 2.12
-               , text             >= 0.8   && < 1.3
+               , base             >= 4.3 && < 5
+               , binary           >= 0.4.1
+               , tasty            >= 0.5
+               , tasty-ant-xml    >= 1.0
+               , tasty-hunit      >= 0.8
+               , tasty-smallcheck >= 0.2
+               , tasty-quickcheck >= 0.8
+               , smallcheck       >= 1.0
+               , QuickCheck       >= 2.5
+               , text             >= 0.8
 
   if flag(bytestring-builder)
       build-depends: bytestring         >= 0.9    && < 0.10.4
                    , bytestring-builder >= 0.10.4 && < 0.11
   else
-      build-depends: bytestring         >= 0.10.4 && < 0.11
+      build-depends: bytestring         >= 0.10.4
 
 benchmark bench-scientific
   type:             exitcode-stdio-1.0
@@ -121,5 +121,5 @@ benchmark bench-scientific
   default-language: Haskell2010
   ghc-options:      -O2
   build-depends:    scientific
-                  , base        >= 4.3   && < 4.12
-                  , criterion   >= 0.5   && < 1.4
+                  , base        >= 4.3 && < 5
+                  , criterion   >= 0.5

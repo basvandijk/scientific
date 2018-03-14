@@ -1,3 +1,7 @@
+0.3.5.3
+	* Dropped upper version bounds of dependencies
+	  because it's to much work to maintain.
+
 0.3.5.2
 	* Remove unused ghc-prim dependency.
 	* Added unit tests for read and scientificP
