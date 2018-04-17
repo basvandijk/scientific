@@ -14,6 +14,7 @@ module Main where
 import           Control.Applicative
 #endif
 import           Control.Monad
+import           Control.Arrow (second)
 import           Data.Int
 import           Data.Word
 import           Data.Scientific                    as Scientific
@@ -236,7 +237,7 @@ genericIsFloating a = fromInteger (floor a :: Integer) /= a
 toDecimalDigits_eq_floatToDigits :: Double -> Bool
 toDecimalDigits_eq_floatToDigits d =
     Scientific.toDecimalDigits (Scientific.fromFloatDigits d)
-      == Numeric.floatToDigits 10 d
+      == second toInteger (Numeric.floatToDigits 10 d)
 
 conversionsProperties :: forall realFloat.
                          ( RealFloat    realFloat
@@ -381,11 +382,11 @@ normalizedScientificSeries = liftM Scientific.normalize SC.series
 instance QC.Arbitrary Scientific where
     arbitrary = QC.frequency
       [ (70, scientific <$> QC.arbitrary
-                        <*> intGen)
+                        <*> integerGen)
       , (20, scientific <$> QC.arbitrary
-                        <*> bigIntGen)
+                        <*> bigIntegerGen)
       , (10, scientific <$> pure 0
-                        <*> bigIntGen)
+                        <*> bigIntegerGen)
       ]
 
     shrink s = zipWith scientific (QC.shrink $ Scientific.coefficient s)
@@ -394,17 +395,17 @@ instance QC.Arbitrary Scientific where
 nonNegativeScientificGen :: QC.Gen Scientific
 nonNegativeScientificGen =
     scientific <$> (QC.getNonNegative <$> QC.arbitrary)
-               <*> intGen
+               <*> integerGen
 
 normalizedScientificGen :: QC.Gen Scientific
 normalizedScientificGen = Scientific.normalize <$> QC.arbitrary
 
-bigIntGen :: QC.Gen Int
-bigIntGen = QC.sized $ \size -> QC.resize (size * 1000) intGen
+bigIntegerGen :: QC.Gen Integer
+bigIntegerGen = QC.sized $ \size -> QC.resize (size * 1000) integerGen
 
-intGen :: QC.Gen Int
+integerGen :: QC.Gen Integer
 #if MIN_VERSION_QuickCheck(2,7,0)
-intGen = QC.arbitrary
+integerGen = QC.arbitrary
 #else
-intGen = QC.sized $ \n -> QC.choose (-n, n)
+integerGen = QC.sized $ \n -> QC.choose (-n, n)
 #endif

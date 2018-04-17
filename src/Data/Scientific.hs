@@ -18,10 +18,6 @@
 -- 'base10Exponent' @e@. A scientific number corresponds to the 'Fractional'
 -- number: @'fromInteger' c * 10 '^^' e@.
 --
--- Note that since we're using an 'Int' to represent the exponent these numbers
--- aren't truly arbitrary precision. I intend to change the type of the exponent
--- to 'Integer' in a future release.
---
 -- The main application of 'Scientific' is to be used as the target of parsing
 -- arbitrary precision numbers coming from an untrusted source. The advantages
 -- over using 'Rational' for this are that:
@@ -102,6 +98,7 @@ import           Data.Data                    (Data)
 import           Data.Function                (on)
 import           Data.Hashable                (Hashable(..))
 import           Data.Int                     (Int8, Int16, Int32, Int64)
+import           Data.List                    (genericReplicate, genericSplitAt)
 import qualified Data.Map            as M     (Map, empty, insert, lookup)
 import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
@@ -157,15 +154,14 @@ data Scientific = Scientific
       --
       -- Use 'normalize' to do manual normalization.
 
-    , base10Exponent :: {-# UNPACK #-} !Int
+    , base10Exponent :: !Integer
       -- ^ The base-10 exponent of a scientific number.
     } deriving (Typeable, Data)
 
 -- | @scientific c e@ constructs a scientific number which corresponds
 -- to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@.
-scientific :: Integer -> Int -> Scientific
+scientific :: Integer -> Integer -> Scientific
 scientific = Scientific
-
 
 ----------------------------------------------------------------------
 -- Instances
@@ -178,14 +174,8 @@ instance Hashable Scientific where
     hashWithSalt salt = hashWithSalt salt . toRational
 
 instance Binary Scientific where
-    put (Scientific c e) = do
-      put c
-      -- In the future I intend to change the type of the base10Exponent e from
-      -- Int to Integer. To support backward compatibility I already convert e
-      -- to Integer here:
-      put $ toInteger e
-
-    get = Scientific <$> get <*> (fromInteger <$> get)
+    put  (Scientific c e) = put c *> put e
+    get = Scientific   <$>  get  <*> get
 
 instance Eq Scientific where
     (==) = (==) `on` toRational
@@ -282,7 +272,7 @@ instance Fractional Scientific where
         | otherwise = positivize (longDiv 0 0) (numerator rational)
       where
         -- Divide the numerator by the denominator using long division.
-        longDiv :: Integer -> Int -> (Integer -> Scientific)
+        longDiv :: Integer -> Integer -> (Integer -> Scientific)
         longDiv !c !e  0 = Scientific c e
         longDiv !c !e !n
                           -- TODO: Use a logarithm here!
@@ -331,10 +321,10 @@ instance Fractional Scientific where
 --            Just repetendIx -> 'toRationalRepetend' s repetendIx)
 -- @
 fromRationalRepetend
-    :: Maybe Int -- ^ Optional limit
+    :: Maybe Integer -- ^ Optional limit
     -> Rational
     -> Either (Scientific, Rational)
-              (Scientific, Maybe Int)
+              (Scientific, Maybe Integer)
 fromRationalRepetend mbLimit rational
         | d == 0    = throw DivideByZero
         | num < 0   = case longDiv (-num) of
@@ -344,16 +334,16 @@ fromRationalRepetend mbLimit rational
       where
         num = numerator rational
 
-        longDiv :: Integer -> Either (Scientific, Rational) (Scientific, Maybe Int)
+        longDiv :: Integer -> Either (Scientific, Rational) (Scientific, Maybe Integer)
         longDiv n = case mbLimit of
                       Nothing -> Right $ longDivNoLimit 0 0 M.empty n
                       Just l  -> longDivWithLimit (-l) n
 
         -- Divide the numerator by the denominator using long division.
         longDivNoLimit :: Integer
-                       -> Int
-                       -> M.Map Integer Int
-                       -> (Integer -> (Scientific, Maybe Int))
+                       -> Integer
+                       -> M.Map Integer Integer
+                       -> (Integer -> (Scientific, Maybe Integer))
         longDivNoLimit !c !e _ns 0 = (Scientific c e, Nothing)
         longDivNoLimit !c !e  ns !n
             | Just e' <- M.lookup n ns = (Scientific c e, Just (-e'))
@@ -362,13 +352,13 @@ fromRationalRepetend mbLimit rational
             | otherwise = case n `quotRemInteger` d of
                             (#q, r#) -> longDivNoLimit (c + q) e ns r
 
-        longDivWithLimit :: Int -> Integer -> Either (Scientific, Rational) (Scientific, Maybe Int)
+        longDivWithLimit :: Integer -> Integer -> Either (Scientific, Rational) (Scientific, Maybe Integer)
         longDivWithLimit l = go 0 0 M.empty
             where
               go :: Integer
-                 -> Int
-                 -> M.Map Integer Int
-                 -> (Integer -> Either (Scientific, Rational) (Scientific, Maybe Int))
+                 -> Integer
+                 -> M.Map Integer Integer
+                 -> (Integer -> Either (Scientific, Rational) (Scientific, Maybe Integer))
               go !c !e _ns 0 = Right (Scientific c e, Nothing)
               go !c !e  ns !n
                   | Just e' <- M.lookup n ns = Right (Scientific c e, Just (-e'))
@@ -420,7 +410,7 @@ fromRationalRepetend mbLimit rational
 -- Also see: 'fromRationalRepetend'.
 toRationalRepetend
     :: Scientific
-    -> Int -- ^ Repetend index
+    -> Integer -- ^ Repetend index
     -> Rational
 toRationalRepetend s r
     | r < 0  = error "toRationalRepetend: Negative repetend index!"
@@ -545,19 +535,19 @@ instance RealFrac Scientific where
 --
 -- Note that we avoid computing the number of decimal digits in c
 -- (log10 c) if the exponent is not below the limit.
-dangerouslySmall :: Integer -> Int -> Bool
-dangerouslySmall c e = e < (-limit) && e < (-integerLog10' (abs c)) - 1
+dangerouslySmall :: Integer -> Integer -> Bool
+dangerouslySmall c e = e < (-limit) && e < toInteger (-integerLog10' (abs c)) - 1
 {-# INLINE dangerouslySmall #-}
 
-limit :: Int
-limit = maxExpt
+limit :: Integer
+limit = toInteger maxExpt
 
 positivize :: (Ord a, Num a, Num b) => (a -> b) -> (a -> b)
 positivize f x | x < 0     = -(f (-x))
                | otherwise =   f   x
 {-# INLINE positivize #-}
 
-whenFloating :: (Num a) => (Integer -> Int -> a) -> Scientific -> a
+whenFloating :: (Num a) => (Integer -> Integer -> a) -> Scientific -> a
 whenFloating f s@(Scientific c e)
     | e < 0     = f c e
     | otherwise = toIntegral s
@@ -603,10 +593,11 @@ uninitialised :: error
 uninitialised = error "Data.Scientific: uninitialised element"
 
 -- | @magnitude e == 10 ^ e@
-magnitude :: Int -> Integer
-magnitude e | e < maxExpt = cachedPow10 e
-            | otherwise   = cachedPow10 hi * 10 ^ (e - hi)
+magnitude :: Integer -> Integer
+magnitude e | e < toInteger maxExpt = cachedPow10 $ fromInteger e
+            | otherwise = cachedPow10 hi * 10 ^ (e - toInteger hi)
     where
+      cachedPow10 :: Int -> Integer
       cachedPow10 = Primitive.indexArray expts10
 
       hi = maxExpt - 1
@@ -639,7 +630,7 @@ fromFloatDigits rf = positivize fromPositiveRealFloat rf
           (digits, e) = Numeric.floatToDigits 10 r
 
           go :: [Int] -> Integer -> Int -> Scientific
-          go []     !c !n = Scientific c (e - n)
+          go []     !c !n = Scientific c (toInteger $ e - n)
           go (d:ds) !c !n = go ds (c * 10 + toInteger d) (n + 1)
 
 {-# INLINABLE fromFloatDigits #-}
@@ -686,7 +677,7 @@ toBoundedRealFloat s@(Scientific c e)
                        -- when the function is specialized for Double and Float
                        -- caused by the realToFrac_toRealFloat_Double/Float rewrite RULEs.
   where
-    hiLimit, loLimit :: Int
+    hiLimit, loLimit :: Integer
     hiLimit = ceiling (fromIntegral hi     * log10Radix)
     loLimit = floor   (fromIntegral lo     * log10Radix) -
               ceiling (fromIntegral digits * log10Radix)
@@ -698,7 +689,7 @@ toBoundedRealFloat s@(Scientific c e)
     digits   = floatDigits (undefined :: a)
     (lo, hi) = floatRange  (undefined :: a)
 
-    d = integerLog10' (abs c)
+    d = toInteger $ integerLog10' (abs c)
 
     sign x | c < 0     = -x
            | otherwise =  x
@@ -728,7 +719,7 @@ toBoundedInteger s
     s' = normalize s
 
     dangerouslyBig = e > limit &&
-                     e > integerLog10' (max (abs iMinBound) (abs iMaxBound))
+                     e > toInteger (integerLog10' (max (abs iMinBound) (abs iMaxBound)))
 
     fromIntegerBounded :: Integer -> Maybe i
     fromIntegerBounded i
@@ -803,7 +794,7 @@ instance Read Scientific where
     readPrec = Read.parens $ ReadPrec.lift (ReadP.skipSpaces >> scientificP)
 
 -- A strict pair
-data SP = SP !Integer {-# UNPACK #-}!Int
+data SP = SP !Integer !Integer
 
 -- | A parser for parsing a floating-point
 -- number into a 'Scientific' value. Example:
@@ -892,12 +883,12 @@ instance Show Scientific where
         showPositive :: Scientific -> String
         showPositive = fmtAsGeneric . toDecimalDigits
 
-        fmtAsGeneric :: ([Int], Int) -> String
+        fmtAsGeneric :: ([Int], Integer) -> String
         fmtAsGeneric x@(_is, e)
             | e < 0 || e > 7 = fmtAsExponent x
             | otherwise      = fmtAsFixed    x
 
-fmtAsExponent :: ([Int], Int) -> String
+fmtAsExponent :: ([Int], Integer) -> String
 fmtAsExponent (is, e) =
     case ds of
       "0"     -> "0.0e0"
@@ -909,9 +900,9 @@ fmtAsExponent (is, e) =
 
     ds = map intToDigit is
 
-fmtAsFixed :: ([Int], Int) -> String
+fmtAsFixed :: ([Int], Integer) -> String
 fmtAsFixed (is, e)
-    | e <= 0    = '0':'.':(replicate (-e) '0' ++ ds)
+    | e <= 0    = '0':'.':(genericReplicate (-e) '0' ++ ds)
     | otherwise =
         let
            f 0 s    rs  = mk0 (reverse s) ++ '.':mk0 rs
@@ -940,48 +931,48 @@ formatScientific format mbDecs s
         Exponent -> fmtAsExponentMbDecs $ toDecimalDigits s'
         Fixed    -> fmtAsFixedMbDecs    $ toDecimalDigits s'
 
-    fmtAsGeneric :: ([Int], Int) -> String
+    fmtAsGeneric :: ([Int], Integer) -> String
     fmtAsGeneric x@(_is, e)
         | e < 0 || e > 7 = fmtAsExponentMbDecs x
         | otherwise      = fmtAsFixedMbDecs x
 
-    fmtAsExponentMbDecs :: ([Int], Int) -> String
+    fmtAsExponentMbDecs :: ([Int], Integer) -> String
     fmtAsExponentMbDecs x = case mbDecs of
                               Nothing  -> fmtAsExponent x
                               Just dec -> fmtAsExponentDecs dec x
 
-    fmtAsFixedMbDecs :: ([Int], Int) -> String
+    fmtAsFixedMbDecs :: ([Int], Integer) -> String
     fmtAsFixedMbDecs x = case mbDecs of
                            Nothing  -> fmtAsFixed x
                            Just dec -> fmtAsFixedDecs dec x
 
-    fmtAsExponentDecs :: Int -> ([Int], Int) -> String
+    fmtAsExponentDecs :: Int -> ([Int], Integer) -> String
     fmtAsExponentDecs dec (is, e) =
         let dec' = max dec 1 in
             case is of
              [0] -> '0' :'.' : take dec' (repeat '0') ++ "e0"
              _ ->
               let
-               (ei,is') = roundTo (dec'+1) is
-               (d:ds') = map intToDigit (if ei > 0 then init is' else is')
-              in
-              d:'.':ds' ++ 'e':show (e-1+ei)
+               (ei,is') = roundTo (toInteger dec' + 1) is
+              in case map intToDigit (if ei > 0 then init is' else is') of
+                   [] -> error "The impossible happened"
+                   d:ds' -> d:'.':ds' ++ 'e':show (e - 1 + toInteger ei)
 
-    fmtAsFixedDecs :: Int -> ([Int], Int) -> String
+    fmtAsFixedDecs :: Int -> ([Int], Integer) -> String
     fmtAsFixedDecs dec (is, e) =
-        let dec' = max dec 0 in
+        let dec' = toInteger $ max dec 0 in
         if e >= 0 then
          let
           (ei,is') = roundTo (dec' + e) is
-          (ls,rs)  = splitAt (e+ei) (map intToDigit is')
+          (ls,rs)  = genericSplitAt (e + toInteger ei) (map intToDigit is')
          in
          mk0 ls ++ (if null rs then "" else '.':rs)
         else
          let
-          (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
-          d:ds' = map intToDigit (if ei > 0 then is' else 0:is')
-         in
-         d : (if null ds' then "" else '.':ds')
+          (ei,is') = roundTo dec' (genericReplicate (-e) 0 ++ is)
+         in case map intToDigit (if ei > 0 then is' else 0:is') of
+              [] -> error "The impossible happened"
+              d:ds'  -> d : (if null ds' then "" else '.':ds')
       where
         mk0 ls = case ls of { "" -> "0" ; _ -> ls}
 
@@ -1002,18 +993,18 @@ formatScientific format mbDecs s
 --
 -- The last property means that the coefficient will be normalized, i.e. doesn't
 -- contain trailing zeros.
-toDecimalDigits :: Scientific -> ([Int], Int)
+toDecimalDigits :: Scientific -> ([Int], Integer)
 toDecimalDigits (Scientific 0  _)  = ([0], 0)
 toDecimalDigits (Scientific c' e') =
     case normalizePositive c' e' of
       Scientific c e -> go c 0 []
         where
-          go :: Integer -> Int -> [Int] -> ([Int], Int)
+          go :: Integer -> Integer -> [Int] -> ([Int], Integer)
           go 0 !n ds = (ds, ne) where !ne = n + e
           go i !n ds = case i `quotRemInteger` 10 of
                          (# q, r #) -> go q (n+1) (d:ds)
                            where
-                             !d = fromIntegral r
+                             !d = fromInteger r
 
 
 ----------------------------------------------------------------------
@@ -1031,7 +1022,7 @@ normalize (Scientific c e)
     | c < 0 = -(normalizePositive (-c) e)
     | otherwise {- c == 0 -} = Scientific 0 0
 
-normalizePositive :: Integer -> Int -> Scientific
+normalizePositive :: Integer -> Integer -> Scientific
 normalizePositive !c !e = case quotRemInteger c 10 of
                             (# c', r #)
                                 | r == 0    -> normalizePositive c' (e+1)

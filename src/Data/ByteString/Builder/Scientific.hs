@@ -11,8 +11,9 @@ import qualified Data.Scientific as Scientific
 
 import Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 
+import           Data.List (genericReplicate, genericSplitAt)
 import qualified Data.ByteString.Char8 as BC8
-import           Data.ByteString.Builder (Builder, string8, char8, intDec)
+import           Data.ByteString.Builder (Builder, string8, char8, integerDec)
 import           Data.ByteString.Builder.Extra (byteStringCopy)
 
 import Utils (roundTo, i2d)
@@ -47,6 +48,7 @@ formatScientificBuilder fmt decs scntfc
    | scntfc < 0 = char8 '-' <> doFmt fmt (Scientific.toDecimalDigits (-scntfc))
    | otherwise  =              doFmt fmt (Scientific.toDecimalDigits   scntfc)
  where
+  doFmt :: FPFormat -> ([Int], Integer) -> Builder
   doFmt format (is, e) =
     let ds = map i2d is in
     case format of
@@ -56,7 +58,7 @@ formatScientificBuilder fmt decs scntfc
      Exponent ->
       case decs of
        Nothing ->
-        let show_e' = intDec (e-1) in
+        let show_e' = integerDec (e-1) in
         case ds of
           "0"     -> byteStringCopy "0.0e0"
           [d]     -> char8 d <> byteStringCopy ".0e" <> show_e'
@@ -71,10 +73,12 @@ formatScientificBuilder fmt decs scntfc
                 byteStringCopy "e0"
          _ ->
           let
-           (ei,is') = roundTo (dec'+1) is
-           (d:ds') = map i2d (if ei > 0 then init is' else is')
-          in
-          char8 d <> char8 '.' <> string8 ds' <> char8 'e' <> intDec (e-1+ei)
+           (ei,is') = roundTo (toInteger dec'+1) is
+          in case map i2d (if ei > 0 then init is' else is') of
+               [] -> error "The impossible happened"
+               d:ds' ->
+                 char8 d <> char8 '.' <> string8 ds' <>
+                 char8 'e' <> integerDec (e - 1 + toInteger ei)
      Fixed ->
       let
        mk0 ls = case ls of { "" -> char8 '0' ; _ -> string8 ls}
@@ -82,7 +86,7 @@ formatScientificBuilder fmt decs scntfc
       case decs of
        Nothing
           | e <= 0    -> byteStringCopy "0." <>
-                         byteStringCopy (BC8.replicate (-e) '0') <>
+                         string8 (genericReplicate (-e) '0') <>
                          string8 ds
           | otherwise ->
              let
@@ -92,16 +96,16 @@ formatScientificBuilder fmt decs scntfc
              in
                 f e "" ds
        Just dec ->
-        let dec' = max dec 0 in
+        let dec' = toInteger $ max dec 0 in
         if e >= 0 then
          let
           (ei,is') = roundTo (dec' + e) is
-          (ls,rs)  = splitAt (e+ei) (map i2d is')
+          (ls,rs)  = genericSplitAt (e + toInteger ei) (map i2d is')
          in
          mk0 ls <> (if null rs then mempty else char8 '.' <> string8 rs)
         else
          let
-          (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
-          d:ds' = map i2d (if ei > 0 then is' else 0:is')
-         in
-         char8 d <> (if null ds' then mempty else char8 '.' <> string8 ds')
+          (ei,is') = roundTo dec' (genericReplicate (-e) 0 ++ is)
+         in case map i2d (if ei > 0 then is' else 0:is') of
+              [] -> error "The impossible happened"
+              d:ds' -> char8 d <> (if null ds' then mempty else char8 '.' <> string8 ds')

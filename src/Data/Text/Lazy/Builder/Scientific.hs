@@ -11,6 +11,7 @@ import qualified Data.Scientific as Scientific
 
 import Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 
+import Data.List                    (genericReplicate, genericSplitAt)
 import Data.Text.Lazy.Builder       (Builder, fromString, singleton, fromText)
 import Data.Text.Lazy.Builder.Int   (decimal)
 import qualified Data.Text as T     (replicate)
@@ -41,6 +42,7 @@ formatScientificBuilder fmt decs scntfc
    | scntfc < 0 = singleton '-' <> doFmt fmt (Scientific.toDecimalDigits (-scntfc))
    | otherwise  =                  doFmt fmt (Scientific.toDecimalDigits   scntfc)
  where
+  doFmt :: FPFormat -> ([Int], Integer) -> Builder
   doFmt format (is, e) =
     let ds = map i2d is in
     case format of
@@ -63,17 +65,19 @@ formatScientificBuilder fmt decs scntfc
          [0] -> "0." <> fromText (T.replicate dec' "0") <> "e0"
          _ ->
           let
-           (ei,is') = roundTo (dec'+1) is
-           (d:ds') = map i2d (if ei > 0 then init is' else is')
-          in
-          singleton d <> singleton '.' <> fromString ds' <> singleton 'e' <> decimal (e-1+ei)
+           (ei,is') = roundTo (toInteger dec' + 1) is
+          in case map i2d (if ei > 0 then init is' else is') of
+               [] -> error "The impossible happened"
+               d:ds' ->
+                 singleton d <> singleton '.' <> fromString ds' <>
+                 singleton 'e' <> decimal (e - 1 + toInteger ei)
      Fixed ->
       let
        mk0 ls = case ls of { "" -> "0" ; _ -> fromString ls}
       in
       case decs of
        Nothing
-          | e <= 0    -> "0." <> fromText (T.replicate (-e) "0") <> fromString ds
+          | e <= 0    -> "0." <> fromString (genericReplicate (-e) '0') <> fromString ds
           | otherwise ->
              let
                 f 0 s    rs  = mk0 (reverse s) <> singleton '.' <> mk0 rs
@@ -82,16 +86,16 @@ formatScientificBuilder fmt decs scntfc
              in
                 f e "" ds
        Just dec ->
-        let dec' = max dec 0 in
+        let dec' = toInteger $ max dec 0 in
         if e >= 0 then
          let
           (ei,is') = roundTo (dec' + e) is
-          (ls,rs)  = splitAt (e+ei) (map i2d is')
+          (ls,rs)  = genericSplitAt (e + toInteger ei) (map i2d is')
          in
          mk0 ls <> (if null rs then "" else singleton '.' <> fromString rs)
         else
          let
-          (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
-          d:ds' = map i2d (if ei > 0 then is' else 0:is')
-         in
-         singleton d <> (if null ds' then "" else singleton '.' <> fromString ds')
+          (ei,is') = roundTo dec' (genericReplicate (-e) 0 ++ is)
+         in case map i2d (if ei > 0 then is' else 0:is') of
+              [] -> error "The impossible happened"
+              d:ds' -> singleton d <> (if null ds' then "" else singleton '.' <> fromString ds')

@@ -8,8 +8,9 @@ module Utils
     ) where
 
 import GHC.Base (Int(I#), Char(C#), chr#, ord#, (+#))
+import Data.List (genericReplicate)
 
-roundTo :: Int -> [Int] -> (Int, [Int])
+roundTo :: Integer -> [Int] -> (Int, [Int])
 roundTo d is =
   case f d True is of
     x@(0,_) -> x
@@ -20,7 +21,7 @@ roundTo d is =
 
   b2 = base `quot` 2
 
-  f n _ []     = (0, replicate n 0)
+  f n _ []     = (0, genericReplicate n 0)
   f 0 e (x:xs) | x == b2 && e && all (== 0) xs = (0, [])   -- Round to even when at exactly half the base
                | otherwise = (if x >= b2 then 1 else 0, [])
   f n _ (i:xs)
