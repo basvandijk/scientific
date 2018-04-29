@@ -1,4 +1,4 @@
-0.3.5.4
+0.3.6.0
 	* Make the methods of the Hashable, Eq and Ord instances safe to
 	use when applied to scientific numbers coming from untrusted
 	sources. Previously these methods first converted their arguments
@@ -6,8 +6,20 @@
 	converting a Scientific to a Rational could fill up all space and
 	crash your program when the Scientific has a huge base10Exponent.
 
+	Do note that the hash computation of the Hashable Scientific
+	instance has been changed because of this improvement!
+
 	Thanks to Tom Sydney Kerckhove (@NorfairKing) for pushing me to
 	fix this.
+
+	* fromRational :: Rational -> Scientific now throws an error
+	instead of diverging when applied to a repeating decimal. This
+	does mean it will consume space linear in the number of digits of
+	the resulting scientific. This makes "fromRational" and the other
+	Fractional methods "recip" and "/" a bit safer to use.
+
+	* To get the old unsafe but more efficient behaviour the following
+	function was added: unsafeFromRational :: Rational -> Scientific.
 
 0.3.5.3
 	* Dropped upper version bounds of dependencies

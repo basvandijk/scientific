@@ -64,6 +64,7 @@ module Data.Scientific
     , isInteger
 
       -- * Conversions
+    , unsafeFromRational
     , fromRationalRepetend
     , toRationalRepetend
     , floatingOrInteger
@@ -282,12 +283,12 @@ instance Real Scientific where
   "realToFrac_toRealFloat_Float"
    realToFrac = toRealFloat :: Scientific -> Float #-}
 
--- | /WARNING:/ 'recip' and '/' will diverge (i.e. loop and consume all space)
--- when their outputs are <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>.
+-- | /WARNING:/ 'recip' and '/' will throw an error when their outputs are
+-- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>.
 --
--- 'fromRational' will diverge when the input 'Rational' is a repeating decimal.
--- Consider using 'fromRationalRepetend' for these rationals which will detect
--- the repetition and indicate where it starts.
+-- 'fromRational' will throw an error when the input 'Rational' is a repeating
+-- decimal.  Consider using 'fromRationalRepetend' for these rationals which
+-- will detect the repetition and indicate where it starts.
 instance Fractional Scientific where
     recip = fromRational . recip . toRational
     {-# INLINABLE recip #-}
@@ -295,23 +296,44 @@ instance Fractional Scientific where
     x / y = fromRational $ toRational x / toRational y
     {-# INLINABLE (/) #-}
 
-    fromRational rational
-        | d == 0    = throw DivideByZero
-        | otherwise = positivize (longDiv 0 0) (numerator rational)
-      where
-        -- Divide the numerator by the denominator using long division.
-        longDiv :: Integer -> Int -> (Integer -> Scientific)
-        longDiv !c !e  0 = Scientific c e
-        longDiv !c !e !n
-                          -- TODO: Use a logarithm here!
-            | n < d     = longDiv (c * 10) (e - 1) (n * 10)
-            | otherwise = case n `quotRemInteger` d of
-                            (#q, r#) -> longDiv (c + q) e r
+    fromRational rational =
+        case fromRationalRepetend Nothing rational of
+          Left _ -> error "The impossible happened!"
+          Right (s, Nothing) -> s
+          Right (_s, Just _ix) -> error $
+            "fromRational has been applied to a repeating decimal " ++
+            "which can't be represented as a Scientific! " ++
+            "It's better to avoid performing fractional operations on Scientifics " ++
+            "and convert them to other fractional types like Double as early as possible."
 
-        d = denominator rational
+-- | Although 'fromRational' is unsafe because it will throw errors on
+-- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>,
+-- @unsafeFromRational@ is even more unsafe because it will diverge instead (i.e
+-- loop and consume all space). Though it will be more efficient because it
+-- doesn't need to consume space linear in the number of digits in the resulting
+-- scientific to detect the repetition.
+--
+-- Consider using 'fromRationalRepetend' for these rationals which will detect
+-- the repetition and indicate where it starts.
+unsafeFromRational :: Rational -> Scientific
+unsafeFromRational rational
+    | d == 0    = throw DivideByZero
+    | otherwise = positivize (longDiv 0 0) (numerator rational)
+  where
+    -- Divide the numerator by the denominator using long division.
+    longDiv :: Integer -> Int -> (Integer -> Scientific)
+    longDiv !c !e  0 = Scientific c e
+    longDiv !c !e !n
+                      -- TODO: Use a logarithm here!
+        | n < d     = longDiv (c * 10) (e - 1) (n * 10)
+        | otherwise = case n `quotRemInteger` d of
+                        (#q, r#) -> longDiv (c + q) e r
 
--- | Like 'fromRational', this function converts a `Rational` to a `Scientific`
--- but instead of diverging (i.e loop and consume all space) on
+    d = denominator rational
+
+-- | Like 'fromRational' and 'unsafeFromRational', this function converts a
+-- `Rational` to a `Scientific` but instead of failing or diverging (i.e loop
+-- and consume all space) on
 -- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>
 -- it detects the repeating part, the /repetend/, and returns where it starts.
 --
