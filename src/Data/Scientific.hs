@@ -99,7 +99,6 @@ import           Control.DeepSeq              (NFData, rnf)
 import           Data.Binary                  (Binary, get, put)
 import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
-import           Data.Function                (on)
 import           Data.Hashable                (Hashable(..))
 import           Data.Int                     (Int8, Int16, Int32, Int64)
 import qualified Data.Map            as M     (Map, empty, insert, lookup)
@@ -175,7 +174,9 @@ instance NFData Scientific where
     rnf (Scientific _ _) = ()
 
 instance Hashable Scientific where
-    hashWithSalt salt = hashWithSalt salt . toRational
+    hashWithSalt salt s = salt `hashWithSalt` c `hashWithSalt` e
+      where
+        Scientific c e = normalize s
 
 instance Binary Scientific where
     put (Scientific c e) = do
@@ -188,27 +189,35 @@ instance Binary Scientific where
     get = Scientific <$> get <*> (fromInteger <$> get)
 
 instance Eq Scientific where
-    (==) = (==) `on` toRational
-    {-# INLINABLE (==) #-}
-
-    (/=) = (/=) `on` toRational
-    {-# INLINABLE (/=) #-}
+    s1 == s2 = c1 == c2 && e1 == e2
+      where
+        Scientific c1 e1 = normalize s1
+        Scientific c2 e2 = normalize s2
 
 instance Ord Scientific where
-    (<) = (<) `on` toRational
-    {-# INLINABLE (<) #-}
+    compare s1 s2
+        | c1 == c2 && e1 == e2 = EQ
+        | c1 < 0    = if c2 < 0 then cmp (-c2) e2 (-c1) e1 else LT
+        | c1 > 0    = if c2 > 0 then cmp   c1  e1   c2  e2 else GT
+        | otherwise = if c2 > 0 then LT else GT
+      where
+        Scientific c1 e1 = normalize s1
+        Scientific c2 e2 = normalize s2
 
-    (<=) = (<=) `on` toRational
-    {-# INLINABLE (<=) #-}
+        cmp cx ex cy ey
+            | log10sx < log10sy = LT
+            | log10sx > log10sy = GT
+            | d < 0     = if cx <= (cy `quotInteger` magnitude (-d)) then LT else GT
+            | d > 0     = if cy >  (cx `quotInteger` magnitude   d)  then LT else GT
+            | otherwise = if cx < cy                                 then LT else GT
+          where
+            log10sx = log10cx + ex
+            log10sy = log10cy + ey
 
-    (>) = (>) `on` toRational
-    {-# INLINABLE (>) #-}
+            log10cx = integerLog10' cx
+            log10cy = integerLog10' cy
 
-    (>=) = (>=) `on` toRational
-    {-# INLINABLE (>=) #-}
-
-    compare = compare `on` toRational
-    {-# INLINABLE compare #-}
+            d = log10cx - log10cy
 
 instance Num Scientific where
     Scientific c1 e1 + Scientific c2 e2

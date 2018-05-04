@@ -97,6 +97,17 @@ main = testMain $ testGroup "scientific"
     --     show d
     ]
 
+  , testGroup "Eq"
+    [ testProperty "==" $ \(s1 :: Scientific) (s2 :: Scientific) ->
+        (s1 == s2) == (toRational s1 == toRational s2)
+    , testProperty "s == s" $ \(s :: Scientific) -> s == s
+    ]
+
+  , testGroup "Ord"
+    [ testProperty "compare" $ \(s1 :: Scientific) (s2 :: Scientific) ->
+        compare s1 s2 == compare (toRational s1) (toRational s2)
+    ]
+
   , testGroup "Num"
     [ testGroup "Equal to Rational"
       [ testProperty "fromInteger" $ \i -> fromInteger i === fromRational (fromInteger i)
