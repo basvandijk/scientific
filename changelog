@@ -21,6 +21,21 @@
 	* To get the old unsafe but more efficient behaviour the following
 	function was added: unsafeFromRational :: Rational -> Scientific.
 
+	* Add alternatives for fromRationalRepetend:
+
+	  fromRationalRepetendLimited
+	      :: Int -- ^ limit
+	      -> Rational
+	      -> Either (Scientific, Rational)
+		        (Scientific, Maybe Int)
+
+	  and:
+
+	  fromRationalRepetendUnlimited
+	      :: Rational -> (Scientific, Maybe Int)
+
+	  Thanks to Ian Jeffries (@seagreen) for the idea.
+
 0.3.5.3
 	* Dropped upper version bounds of dependencies
 	  because it's to much work to maintain.

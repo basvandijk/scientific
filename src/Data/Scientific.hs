@@ -64,9 +64,14 @@ module Data.Scientific
     , isInteger
 
       -- * Conversions
+      -- ** Rational
     , unsafeFromRational
     , fromRationalRepetend
+    , fromRationalRepetendLimited
+    , fromRationalRepetendUnlimited
     , toRationalRepetend
+
+      -- ** Floating & integer
     , floatingOrInteger
     , toRealFloat
     , toBoundedRealFloat
@@ -297,14 +302,15 @@ instance Fractional Scientific where
     {-# INLINABLE (/) #-}
 
     fromRational rational =
-        case fromRationalRepetend Nothing rational of
-          Left _ -> error "The impossible happened!"
-          Right (s, Nothing) -> s
-          Right (_s, Just _ix) -> error $
+        case mbRepetendIx of
+          Nothing -> s
+          Just _ix -> error $
             "fromRational has been applied to a repeating decimal " ++
             "which can't be represented as a Scientific! " ++
             "It's better to avoid performing fractional operations on Scientifics " ++
             "and convert them to other fractional types like Double as early as possible."
+      where
+        (s, mbRepetendIx) = fromRationalRepetendUnlimited rational
 
 -- | Although 'fromRational' is unsafe because it will throw errors on
 -- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>,
@@ -375,7 +381,18 @@ fromRationalRepetend
     -> Rational
     -> Either (Scientific, Rational)
               (Scientific, Maybe Int)
-fromRationalRepetend mbLimit rational
+fromRationalRepetend mbLimit rational =
+    case mbLimit of
+      Nothing -> Right $ fromRationalRepetendUnlimited rational
+      Just l  -> fromRationalRepetendLimited l rational
+
+-- | Like 'fromRationalRepetend' but always accepts a limit.
+fromRationalRepetendLimited
+    :: Int -- ^ limit
+    -> Rational
+    -> Either (Scientific, Rational)
+              (Scientific, Maybe Int)
+fromRationalRepetendLimited l rational
         | d == 0    = throw DivideByZero
         | num < 0   = case longDiv (-num) of
                         Left  (s, r)  -> Left  (-s, -r)
@@ -385,11 +402,38 @@ fromRationalRepetend mbLimit rational
         num = numerator rational
 
         longDiv :: Integer -> Either (Scientific, Rational) (Scientific, Maybe Int)
-        longDiv n = case mbLimit of
-                      Nothing -> Right $ longDivNoLimit 0 0 M.empty n
-                      Just l  -> longDivWithLimit (-l) n
+        longDiv = longDivWithLimit 0 0 M.empty
 
-        -- Divide the numerator by the denominator using long division.
+        longDivWithLimit
+            :: Integer
+            -> Int
+            -> M.Map Integer Int
+            -> (Integer -> Either (Scientific, Rational)
+                                  (Scientific, Maybe Int))
+        longDivWithLimit !c !e _ns 0 = Right (Scientific c e, Nothing)
+        longDivWithLimit !c !e  ns !n
+            | Just e' <- M.lookup n ns = Right (Scientific c e, Just (-e'))
+            | e <= (-l) = Left (Scientific c e, n % (d * magnitude (-e)))
+            | n < d = let !ns' = M.insert n e ns
+                      in longDivWithLimit (c * 10) (e - 1) ns' (n * 10)
+            | otherwise = case n `quotRemInteger` d of
+                            (#q, r#) -> longDivWithLimit (c + q) e ns r
+
+        d = denominator rational
+
+-- | Like 'fromRationalRepetend' but doesn't accept a limit.
+fromRationalRepetendUnlimited :: Rational -> (Scientific, Maybe Int)
+fromRationalRepetendUnlimited rational
+        | d == 0    = throw DivideByZero
+        | num < 0   = case longDiv (-num) of
+                        (s, mb) -> (-s, mb)
+        | otherwise = longDiv num
+      where
+        num = numerator rational
+
+        longDiv :: Integer -> (Scientific, Maybe Int)
+        longDiv = longDivNoLimit 0 0 M.empty
+
         longDivNoLimit :: Integer
                        -> Int
                        -> M.Map Integer Int
@@ -401,22 +445,6 @@ fromRationalRepetend mbLimit rational
                           in longDivNoLimit (c * 10) (e - 1) ns' (n * 10)
             | otherwise = case n `quotRemInteger` d of
                             (#q, r#) -> longDivNoLimit (c + q) e ns r
-
-        longDivWithLimit :: Int -> Integer -> Either (Scientific, Rational) (Scientific, Maybe Int)
-        longDivWithLimit l = go 0 0 M.empty
-            where
-              go :: Integer
-                 -> Int
-                 -> M.Map Integer Int
-                 -> (Integer -> Either (Scientific, Rational) (Scientific, Maybe Int))
-              go !c !e _ns 0 = Right (Scientific c e, Nothing)
-              go !c !e  ns !n
-                  | Just e' <- M.lookup n ns = Right (Scientific c e, Just (-e'))
-                  | e <= l    = Left (Scientific c e, n % (d * magnitude (-e)))
-                  | n < d     = let !ns' = M.insert n e ns
-                                in go (c * 10) (e - 1) ns' (n * 10)
-                  | otherwise = case n `quotRemInteger` d of
-                                  (#q, r#) -> go (c + q) e ns r
 
         d = denominator rational
 
