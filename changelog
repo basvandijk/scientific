@@ -1,3 +1,14 @@
+0.3.5.4
+	* Make the methods of the Hashable, Eq and Ord instances safe to
+	use when applied to scientific numbers coming from untrusted
+	sources. Previously these methods first converted their arguments
+	to Rational before applying the operation. This is unsafe because
+	converting a Scientific to a Rational could fill up all space and
+	crash your program when the Scientific has a huge base10Exponent.
+
+	Thanks to Tom Sydney Kerckhove (@NorfairKing) for pushing me to
+	fix this.
+
 0.3.5.3
 	* Dropped upper version bounds of dependencies
 	  because it's to much work to maintain.
