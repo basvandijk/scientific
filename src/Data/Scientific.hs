@@ -22,6 +22,11 @@
 -- aren't truly arbitrary precision. I intend to change the type of the exponent
 -- to 'Integer' in a future release.
 --
+-- /WARNING:/ Although @Scientific@ has instances for all numeric classes the
+-- methods should be used with caution when applied to scientific numbers coming
+-- from untrusted sources. See the warnings of the instances belonging to
+-- 'Scientific'.
+--
 -- The main application of 'Scientific' is to be used as the target of parsing
 -- arbitrary precision numbers coming from an untrusted source. The advantages
 -- over using 'Rational' for this are that:
@@ -40,13 +45,6 @@
 -- * Also, the space usage of converting scientific numbers with huge exponents
 -- to @'Integral's@ (like: 'Int') or @'RealFloat's@ (like: 'Double' or 'Float')
 -- will always be bounded by the target type.
---
--- /WARNING:/ Although @Scientific@ is an instance of 'Fractional', the methods
--- are only partially defined! Specifically 'recip' and '/' will diverge
--- (i.e. loop and consume all space) when their outputs have an infinite decimal
--- expansion. 'fromRational' will diverge when the input 'Rational' has an
--- infinite decimal expansion. Consider using 'fromRationalRepetend' for these
--- rationals which will detect the repetition and indicate where it starts.
 --
 -- This module is designed to be imported qualified:
 --
@@ -173,27 +171,33 @@ scientific = Scientific
 instance NFData Scientific where
     rnf (Scientific _ _) = ()
 
+-- | A hash can be safely calculated from a @Scientific@. No magnitude @10^e@ is
+-- calculated so there's no risk of a blowup in space or time when hashing
+-- scientific numbers coming from untrusted sources.
 instance Hashable Scientific where
     hashWithSalt salt s = salt `hashWithSalt` c `hashWithSalt` e
       where
         Scientific c e = normalize s
 
+-- | Note that in the future I intend to change the type of the 'base10Exponent'
+-- from @Int@ to @Integer@. To be forward compatible the @Binary@ instance
+-- already encodes the exponent as 'Integer'.
 instance Binary Scientific where
-    put (Scientific c e) = do
-      put c
-      -- In the future I intend to change the type of the base10Exponent e from
-      -- Int to Integer. To support backward compatibility I already convert e
-      -- to Integer here:
-      put $ toInteger e
-
+    put (Scientific c e) = put c *> put (toInteger e)
     get = Scientific <$> get <*> (fromInteger <$> get)
 
+-- | Scientific numbers can be safely compared for equality. No magnitude @10^e@
+-- is calculated so there's no risk of a blowup in space or time when comparing
+-- scientific numbers coming from untrusted sources.
 instance Eq Scientific where
     s1 == s2 = c1 == c2 && e1 == e2
       where
         Scientific c1 e1 = normalize s1
         Scientific c2 e2 = normalize s2
 
+-- | Scientific numbers can be safely compared for ordering. No magnitude @10^e@
+-- is calculated so there's no risk of a blowup in space or time when comparing
+-- scientific numbers coming from untrusted sources.
 instance Ord Scientific where
     compare s1 s2
         | c1 == c2 && e1 == e2 = EQ
@@ -219,6 +223,11 @@ instance Ord Scientific where
 
             d = log10cx - log10cy
 
+-- | /WARNING:/ '+' and '-' compute the 'Integer' magnitude: @10^e@ where @e@ is
+-- the difference between the @'base10Exponent's@ of the arguments. If these
+-- methods are applied to arguments which have huge exponents this could fill up
+-- all space and crash your program! So don't apply these methods to scientific
+-- numbers coming from untrusted sources. The other methods can be used safely.
 instance Num Scientific where
     Scientific c1 e1 + Scientific c2 e2
        | e1 < e2   = Scientific (c1   + c2*l) e1
@@ -452,6 +461,10 @@ toRationalRepetend s r
 
     nines = m - 1
 
+-- | /WARNING:/ the methods of the @RealFrac@ instance need to compute the
+-- magnitude @10^e@. If applied to a huge exponent this could take a long
+-- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
+-- could fill up all space and crash your program!
 instance RealFrac Scientific where
     -- | The function 'properFraction' takes a Scientific number @s@
     -- and returns a pair @(n,f)@ such that @s = n+f@, and:
@@ -894,6 +907,7 @@ isE c = c == 'e' || c == 'E'
 -- Pretty Printing
 ----------------------------------------------------------------------
 
+-- | See 'formatScientific' if you need more control over the rendering.
 instance Show Scientific where
     show s | coefficient s < 0 = '-':showPositive (-s)
            | otherwise         =     showPositive   s
