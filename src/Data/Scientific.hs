@@ -119,6 +119,10 @@ import qualified Text.ParserCombinators.ReadP    as ReadP
 import           Text.ParserCombinators.ReadP     ( ReadP )
 import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 
+#if !MIN_VERSION_base(4,9,0)
+import           Control.Applicative          ((*>))
+#endif
+
 #if !MIN_VERSION_base(4,8,0)
 import           Data.Functor                 ((<$>))
 import           Data.Word                    (Word)

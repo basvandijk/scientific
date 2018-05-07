@@ -1,3 +1,6 @@
+0.3.6.1
+	* Fix build on GHC < 8.
+
 0.3.6.0
 	* Make the methods of the Hashable, Eq and Ord instances safe to
 	use when applied to scientific numbers coming from untrusted
