@@ -465,6 +465,11 @@ fromRationalRepetendUnlimited rational
 --
 -- * @r < -(base10Exponent s)@
 --
+-- /WARNING:/ @toRationalRepetend@ needs to compute the 'Integer' magnitude:
+-- @10^^n@. Where @n@ is based on the 'base10Exponent` of the scientific. If
+-- applied to a huge exponent this could fill up all space and crash your
+-- program! So don't apply this function to untrusted input.
+--
 -- The formula to convert the @Scientific@ @s@
 -- with a repetend starting at index @r@ is described in the paper:
 -- <http://fiziko.bureau42.com/teaching_tidbits/turning_repeating_decimals_into_fractions.pdf turning_repeating_decimals_into_fractions.pdf>
@@ -830,9 +835,20 @@ toBoundedInteger s
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Word32 #-}
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Word64 #-}
 
--- | @floatingOrInteger@ determines if the scientific is floating point
--- or integer. In case it's floating-point the scientific is converted
--- to the desired 'RealFloat' using 'toRealFloat'.
+-- | @floatingOrInteger@ determines if the scientific is floating point or
+-- integer.
+--
+-- In case it's floating-point the scientific is converted to the desired
+-- 'RealFloat' using 'toRealFloat' and wrapped in 'Left'.
+--
+-- In case it's integer to scientific is converted to the desired 'Integral' and
+-- wrapped in 'Right'.
+--
+-- /WARNING:/ To convert the scientific to an integral the magnitude @10^e@
+-- needs to be computed. If applied to a huge exponent this could take a long
+-- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
+-- could fill up all space and crash your program! So don't apply this function
+-- to untrusted input but use 'toBoundedInteger' instead.
 --
 -- Also see: 'isFloating' or 'isInteger'.
 floatingOrInteger :: (RealFloat r, Integral i) => Scientific -> Either r i
