@@ -19,7 +19,7 @@ import           Data.Word
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
 import           Test.Tasty.Runners.AntXML
-import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion)
+import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion, assertBool)
 import qualified Test.SmallCheck                    as SC
 import qualified Test.SmallCheck.Series             as SC
 import qualified Test.Tasty.SmallCheck              as SC  (testProperty)
@@ -38,7 +38,56 @@ import           Text.ParserCombinators.ReadP (readP_to_S)
 
 main :: IO ()
 main = testMain $ testGroup "scientific"
-  [ smallQuick "normalization"
+  [ testGroup "DoS protection"
+    [ testGroup "Eq"
+      [ testCase "1e1000000" $ assertBool "" $
+          (read "1e1000000" :: Scientific) == (read "1e1000000" :: Scientific)
+      ]
+    , testGroup "Ord"
+      [ testCase "compare 1234e1000000 123e1000001" $
+          compare (read "1234e1000000" :: Scientific) (read "123e1000001" :: Scientific) @?= GT
+      ]
+
+    , testGroup "RealFrac"
+      [ testGroup "floor"
+        [ testCase "1e1000000"   $ (floor (read "1e1000000"   :: Scientific) :: Int) @?= 0
+        , testCase "-1e-1000000" $ (floor (read "-1e-1000000" :: Scientific) :: Int) @?= (-1)
+        , testCase "1e-1000000"  $ (floor (read "1e-1000000"  :: Scientific) :: Int) @?= 0
+        ]
+      , testGroup "ceiling"
+        [ testCase "1e1000000"   $ (ceiling (read "1e1000000"   :: Scientific) :: Int) @?= 0
+        , testCase "-1e-1000000" $ (ceiling (read "-1e-1000000" :: Scientific) :: Int) @?= 0
+        , testCase "1e-1000000"  $ (ceiling (read "1e-1000000"  :: Scientific) :: Int) @?= 1
+        ]
+      , testGroup "round"
+        [ testCase "1e1000000"   $ (round (read "1e1000000"   :: Scientific) :: Int) @?= 0
+        , testCase "-1e-1000000" $ (round (read "-1e-1000000" :: Scientific) :: Int) @?= 0
+        , testCase "1e-1000000"  $ (round (read "1e-1000000"  :: Scientific) :: Int) @?= 0
+        ]
+      , testGroup "truncate"
+        [ testCase "1e1000000"   $ (truncate (read "1e1000000"   :: Scientific) :: Int) @?= 0
+        , testCase "-1e-1000000" $ (truncate (read "-1e-1000000" :: Scientific) :: Int) @?= 0
+        , testCase "1e-1000000"  $ (truncate (read "1e-1000000"  :: Scientific) :: Int) @?= 0
+        ]
+      , testGroup "properFracton"
+        [ testCase "1e1000000"   $ properFraction (read "1e1000000" :: Scientific) @?= (0 :: Int, 0)
+        , testCase "-1e-1000000" $ let s = read "-1e-1000000" :: Scientific
+                                   in properFraction s @?= (0 :: Int, s)
+        , testCase "1e-1000000"  $ let s = read "1e-1000000" :: Scientific
+                                   in properFraction s @?= (0 :: Int, s)
+        ]
+      ]
+    , testGroup "toRealFloat"
+      [ testCase "1e1000000"  $ assertBool "Should be infinity!" $ isInfinite $
+                                  (toRealFloat (read "1e1000000" :: Scientific) :: Double)
+      , testCase "1e-1000000" $ (toRealFloat (read "1e-1000000" :: Scientific) :: Double) @?= 0
+      ]
+    , testGroup "toBoundedInteger"
+      [ testCase "1e1000000"  $ (toBoundedInteger (read "1e1000000" :: Scientific) :: Maybe Int) @?= Nothing
+      ]
+    ]
+
+  , smallQuick "normalization"
        (SC.over   normalizedScientificSeries $ \s ->
             s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
        (QC.forAll normalizedScientificGen    $ \s ->
