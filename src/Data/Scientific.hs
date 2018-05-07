@@ -642,7 +642,7 @@ whenFloating f s@(Scientific c e)
 -- | Precondition: the 'Scientific' @s@ needs to be an integer:
 -- @base10Exponent (normalize s) >= 0@
 toIntegral :: (Num a) => Scientific -> a
-toIntegral (Scientific c e) = fromInteger c * fromInteger (magnitude e)
+toIntegral (Scientific c e) = fromInteger c * magnitude e
 {-# INLINE toIntegral #-}
 
 
@@ -679,11 +679,11 @@ uninitialised :: error
 uninitialised = error "Data.Scientific: uninitialised element"
 
 -- | @magnitude e == 10 ^ e@
-magnitude :: Int -> Integer
+magnitude :: Num a => Int -> a
 magnitude e | e < maxExpt = cachedPow10 e
             | otherwise   = cachedPow10 hi * 10 ^ (e - hi)
     where
-      cachedPow10 = Primitive.indexArray expts10
+      cachedPow10 = fromInteger . Primitive.indexArray expts10
 
       hi = maxExpt - 1
 
