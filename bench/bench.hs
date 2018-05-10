@@ -1,9 +1,20 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Main where
 
 import Criterion.Main
 import Data.Int
 import Data.Word
 import Data.Scientific
+
+import           Control.Monad                (mplus)
+import           Data.Char                    (intToDigit, ord)
+import qualified Text.Read                       as Read
+import           Text.Read                        (readPrec)
+import qualified Text.ParserCombinators.ReadPrec as ReadPrec
+import           Text.ParserCombinators.ReadPrec  ( ReadPrec )
+import qualified Text.ParserCombinators.ReadP    as ReadP
+import           Text.ParserCombinators.ReadP     ( ReadP )
 
 main :: IO ()
 main = defaultMain
@@ -57,6 +68,12 @@ main = defaultMain
          , bgroup "dangerouslyBig" $ benchToBoundedInteger dangerouslyBig
          , bgroup "64"             $ benchToBoundedInteger 64
          ]
+
+       , bgroup "read"
+         [ benchRead "123456789.123456789"
+         , benchRead "12345678900000000000.12345678900000000000000000"
+         , benchRead "12345678900000000000.12345678900000000000000000e1234"
+         ]
        ]
     where
       pos :: Fractional a => a
@@ -79,6 +96,13 @@ main = defaultMain
 
       dangerouslySmall :: Scientific
       dangerouslySmall = read "1e-500"
+
+benchRead :: String -> Benchmark
+benchRead s =
+    bgroup s
+    [ bench "new" $ nf (ReadPrec.readPrec_to_S (readPrec :: ReadPrec Scientific) 0) s
+    , bench "old" $ nf (ReadPrec.readPrec_to_S oldReadPrecScientific 0) s
+    ]
 
 realToFracStoD :: Scientific -> Double
 realToFracStoD = fromRational . toRational
@@ -137,3 +161,68 @@ benchToBoundedInteger s =
     , bench "Word32" $ nf (toBoundedInteger :: Scientific -> Maybe Word32) s
     , bench "Word64" $ nf (toBoundedInteger :: Scientific -> Maybe Word64) s
     ]
+
+oldReadPrecScientific :: ReadPrec Scientific
+oldReadPrecScientific = Read.parens $ ReadPrec.lift (ReadP.skipSpaces >> oldScientificP)
+
+-- A strict pair
+data SP = SP !Integer {-# UNPACK #-}!Int
+
+oldScientificP :: ReadP Scientific
+oldScientificP = do
+  let positive = (('+' ==) <$> ReadP.satisfy isSign) `mplus` return True
+  pos <- positive
+
+  let step :: Num a => a -> Int -> a
+      step a digit = a * 10 + fromIntegral digit
+      {-# INLINE step #-}
+
+  n <- foldDigits step 0
+
+  let s = SP n 0
+      fractional = foldDigits (\(SP a e) digit ->
+                                 SP (step a digit) (e-1)) s
+
+  SP coeff expnt <- (ReadP.satisfy (== '.') >> fractional)
+                    ReadP.<++ return s
+
+  let signedCoeff | pos       =   coeff
+                  | otherwise = (-coeff)
+
+      eP = do posE <- positive
+              e <- foldDigits step 0
+              if posE
+                then return   e
+                else return (-e)
+
+  (ReadP.satisfy isE >>
+           ((scientific signedCoeff . (expnt +)) <$> eP)) `mplus`
+     return (scientific signedCoeff    expnt)
+
+foldDigits :: (a -> Int -> a) -> a -> ReadP a
+foldDigits f z = do
+    c <- ReadP.satisfy isDecimal
+    let digit = ord c - 48
+        a = f z digit
+
+    ReadP.look >>= go a
+  where
+    go !a [] = return a
+    go !a (c:cs)
+        | isDecimal c = do
+            _ <- ReadP.get
+            let digit = ord c - 48
+            go (f a digit) cs
+        | otherwise = return a
+
+isDecimal :: Char -> Bool
+isDecimal c = c >= '0' && c <= '9'
+{-# INLINE isDecimal #-}
+
+isSign :: Char -> Bool
+isSign c = c == '-' || c == '+'
+{-# INLINE isSign #-}
+
+isE :: Char -> Bool
+isE c = c == 'e' || c == 'E'
+{-# INLINE isE #-}

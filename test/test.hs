@@ -88,10 +88,8 @@ main = testMain $ testGroup "scientific"
     ]
 
   , smallQuick "normalization"
-       (SC.over   normalizedScientificSeries $ \s ->
-            s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
-       (QC.forAll normalizedScientificGen    $ \s ->
-            s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+       (\s -> s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+       (\s -> s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
 
   , testGroup "Binary"
     [ testProperty "decode . encode == id" $ \s ->
@@ -235,9 +233,7 @@ main = testMain $ testGroup "scientific"
       [ testProperty "correct conversion" $ \s ->
             case floatingOrInteger s :: Either Double Int of
               Left  d -> d == toRealFloat s
-              Right i -> i == fromInteger (coefficient s') * 10^(base10Exponent s')
-                  where
-                    s' = normalize s
+              Right i -> i == fromInteger (coefficient s) * 10^(base10Exponent s)
       , testProperty "Integer == Right" $ \(i::Integer) ->
           (floatingOrInteger (fromInteger i) :: Either Double Integer) == Right i
       , smallQuick "Double == Left"
@@ -328,11 +324,9 @@ toBoundedIntegerConversion
     => i -> Scientific -> Bool
 toBoundedIntegerConversion _ s =
     case toBoundedInteger s :: Maybe i of
-      Just i -> i == (fromIntegral $ (coefficient s') * 10^(base10Exponent s')) &&
+      Just i -> i == (fromIntegral $ (coefficient s) * 10^(base10Exponent s)) &&
                 i >= minBound &&
                 i <= maxBound
-        where
-          s' = normalize s
       Nothing -> isFloating s ||
                  s < fromIntegral (minBound :: i) ||
                  s > fromIntegral (maxBound :: i)
@@ -430,9 +424,6 @@ scientifics = SC.cons2 scientific
 nonNegativeScientificSeries :: (Monad m) => SC.Series m Scientific
 nonNegativeScientificSeries = liftM SC.getNonNegative SC.series
 
-normalizedScientificSeries :: (Monad m) => SC.Series m Scientific
-normalizedScientificSeries = liftM Scientific.normalize SC.series
-
 
 ----------------------------------------------------------------------
 -- QuickCheck instances
@@ -455,9 +446,6 @@ nonNegativeScientificGen :: QC.Gen Scientific
 nonNegativeScientificGen =
     scientific <$> (QC.getNonNegative <$> QC.arbitrary)
                <*> intGen
-
-normalizedScientificGen :: QC.Gen Scientific
-normalizedScientificGen = Scientific.normalize <$> QC.arbitrary
 
 bigIntGen :: QC.Gen Int
 bigIntGen = QC.sized $ \size -> QC.resize (size * 1000) intGen

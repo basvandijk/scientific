@@ -1,3 +1,17 @@
+0.3.7.0
+	* Normalize scientific numbers on construction.
+	This fixes https://github.com/basvandijk/scientific/issues/63.
+
+	* Expose the new Unsafe module `Data.Scientific.Unsafe` which exports
+	`unsafeScientificFromNormalized` for constructing Scientific numbers
+	from an already normalized coefficient.
+
+	When parsing Scientifics it's advisable to count the number of trailing
+	0s in the coefficient and dividing the coefficient by 10^(number of
+	trailing 0s). You can then use `unsafeScientificFromNormalized` to
+	construct the Scientific. This is more efficient than using `scientific`
+	because no expensive normalization has to be performed.
+
 0.3.6.2
 	* Due to a regression introduced in 0.3.4.14 the RealFrac methods
 	and floatingOrInteger became vulnerable to a space blowup when
