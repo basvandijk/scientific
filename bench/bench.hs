@@ -74,6 +74,15 @@ main = defaultMain
          , benchRead "12345678900000000000.12345678900000000000000000"
          , benchRead "12345678900000000000.12345678900000000000000000e1234"
          ]
+
+       , bgroup "division"
+         [ bench (show n ++ " / " ++ show d) $ nf (uncurry (/)) t
+         | t@(n, d) <-
+           [ (0.4     , 20.0)
+           , (0.4e-100, 0.2e50)
+           ] :: [(Scientific, Scientific)]
+         ]
+
        ]
     where
       pos :: Fractional a => a

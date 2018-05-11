@@ -17,6 +17,8 @@
 	  efficient than using `scientific` because no expensive normalization has to be
 	  performed.
 
+	* Make / on Scientifics slightly more efficient.
+
 0.3.6.2
 	* Due to a regression introduced in 0.3.4.14 the RealFrac methods
 	and floatingOrInteger became vulnerable to a space blowup when
