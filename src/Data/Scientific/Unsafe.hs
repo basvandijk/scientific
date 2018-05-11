@@ -1,3 +1,8 @@
 {-# LANGUAGE Unsafe #-}
-module Data.Scientific.Unsafe ( unsafeScientificFromNormalized ) where
-import Data.Scientific.Internal ( unsafeScientificFromNormalized )
+
+module Data.Scientific.Unsafe
+    ( unsafeScientificFromNormalized
+    , unsafeScientificFromNonNormalized
+    ) where
+
+import Data.Scientific.Internal

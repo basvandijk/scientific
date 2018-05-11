@@ -11,6 +11,7 @@ module Data.Scientific.Internal
       -- * Construction
     , scientific
     , unsafeScientificFromNormalized
+    , unsafeScientificFromNonNormalized
 
       -- * Projections
     , coefficient
@@ -124,13 +125,31 @@ scientific
     -> Scientific
 scientific c e = normalize (Scientific c e)
 
--- | Like 'scientific' but assumes the 'coefficient' is normalized, i.e. has no
--- trailing 0s.
+-- | Unsafe but efficient way to construct a 'Scientific' from an
+-- already normalized 'coefficient', i.e. it has no trailing 0s.
 unsafeScientificFromNormalized
     :: Integer -- ^ coefficient which should be normalized
     -> Int     -- ^ base-10 exponent
     -> Scientific
 unsafeScientificFromNormalized = Scientific
+
+-- | Unsafe but efficient way to construct a 'Scientific' from a
+-- 'coefficient' which does not have to be normalized (i.e. it may
+-- contain trailing 0s). You should supply the number of trailing 0s
+-- in the 'coefficient' as the second argument.
+--
+-- This function is useful when parsing a 'Scientific'. The parser
+-- can count the number of trailing 0s and supply that to this
+-- function. This will be more efficient than calling 'scientific'
+-- because no expensive normalization has to be performed.
+unsafeScientificFromNonNormalized
+    :: Integer -- ^ coefficient
+    -> Int     -- ^ number of trailing 0s in the coefficient
+    -> Int     -- ^ base-10 exponent
+    -> Scientific
+unsafeScientificFromNonNormalized 0 _ _ = Scientific 0 0
+unsafeScientificFromNonNormalized c 0 e = Scientific c e
+unsafeScientificFromNonNormalized c z e = Scientific (c `quotInteger` magnitude z) (e + z)
 
 
 ----------------------------------------------------------------------
@@ -860,8 +879,8 @@ scientificP = do
     let signedCoeff | pos       =   coeff
                     | otherwise = (-coeff)
     (ReadP.satisfy isE >>
-             ((sci signedCoeff z . (expnt +)) <$> eP)) `mplus`
-       return (sci signedCoeff z    expnt)
+             ((unsafeScientificFromNonNormalized signedCoeff z . (expnt +)) <$> eP)) `mplus`
+       return (unsafeScientificFromNonNormalized signedCoeff z    expnt)
   where
     positive :: ReadP Bool
     positive = (('+' ==) <$> ReadP.satisfy isSign) `mplus` return True
@@ -883,11 +902,6 @@ scientificP = do
             if posE
               then return   e
               else return (-e)
-
-    sci :: Integer -> Int -> Int -> Scientific
-    sci 0 _ _ = Scientific 0 0
-    sci c 0 e = Scientific c e
-    sci c z e = Scientific (c `quotInteger` magnitude z) (e + z)
 
 foldDigits :: (a -> Int -> a) -> a -> ReadP a
 foldDigits f z = do
