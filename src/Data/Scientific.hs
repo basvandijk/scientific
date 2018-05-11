@@ -295,15 +295,23 @@ instance Real Scientific where
 -- | /WARNING:/ 'recip' and '/' will throw an error when their outputs are
 -- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>.
 --
+-- These methods also compute 'Integer' magnitudes (@10^e@). If these methods
+-- are applied to arguments which have huge exponents this could fill up all
+-- space and crash your program! So don't apply these methods to scientific
+-- numbers coming from untrusted sources.
+--
 -- 'fromRational' will throw an error when the input 'Rational' is a repeating
 -- decimal.  Consider using 'fromRationalRepetend' for these rationals which
 -- will detect the repetition and indicate where it starts.
 instance Fractional Scientific where
     recip = fromRational . recip . toRational
-    {-# INLINABLE recip #-}
 
-    x / y = fromRational $ toRational x / toRational y
-    {-# INLINABLE (/) #-}
+    Scientific c1 e1 / Scientific c2 e2
+        | d < 0     = fromRational (x / (fromInteger (magnitude (-d))))
+        | otherwise = fromRational (x *  fromInteger (magnitude   d))
+      where
+        d = e1 - e2
+        x = c1 % c2
 
     fromRational rational =
         case mbRepetendIx of
