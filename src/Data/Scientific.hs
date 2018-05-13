@@ -69,6 +69,7 @@ module Data.Scientific
     , toRealFloat
     , toBoundedRealFloat
     , toBoundedInteger
+    , toUnboundedInteger
     , fromFloatDigits
 
       -- * Parsing

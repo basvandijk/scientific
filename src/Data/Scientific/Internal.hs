@@ -34,6 +34,7 @@ module Data.Scientific.Internal
     , toRealFloat
     , toBoundedRealFloat
     , toBoundedInteger
+    , toUnboundedInteger
     , fromFloatDigits
 
       -- * Parsing
@@ -804,6 +805,18 @@ toBoundedInteger (Scientific c e)
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Word16 #-}
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Word32 #-}
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Word64 #-}
+
+-- | Convert a `Scientific` to an 'Integer'. Return 'Nothing' when the input is
+-- floating-point.
+--
+-- /WARNING:/ To convert the @Scientific@ to an @Integer@ the magnitude @10^e@
+-- needs to be computed. If applied to a huge exponent this could fill up all
+-- space and crash your program! So don't apply this function to untrusted
+-- input.
+toUnboundedInteger :: Scientific -> Maybe Integer
+toUnboundedInteger s@(Scientific c e)
+    | isInteger s = Just (toIntegral c e)
+    | otherwise   = Nothing
 
 -- | @floatingOrInteger@ determines if the scientific is floating point or
 -- integer.
