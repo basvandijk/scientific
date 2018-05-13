@@ -764,28 +764,20 @@ toBoundedRealFloat s@(Scientific c e)
 
 -- | Convert a `Scientific` to a bounded integer.
 --
--- If the given `Scientific` doesn't fit in the target representation, it will
--- return `Nothing`.
+-- If the given `Scientific` is not an integer or doesn't fit in the
+-- target representation, it will return `Nothing`.
 --
 -- This function also guards against computing huge Integer magnitudes (@10^e@)
 -- that could fill up all space and crash your program.
 toBoundedInteger :: forall i. (Integral i, Bounded i) => Scientific -> Maybe i
-toBoundedInteger (Scientific c e)
-    | c == 0    = fromIntegerBounded 0
-    | integral  = if dangerouslyBig
-                  then Nothing
-                  else fromIntegerBounded n
-    | otherwise = Nothing
+toBoundedInteger s@(Scientific c e)
+    | isFloating s || dangerouslyBig || outsideBounds n = Nothing
+    | otherwise = Just $ fromInteger n
   where
-    integral = e >= 0
-
     dangerouslyBig = e > limit &&
                      e > integerLog10' (max (abs iMinBound) (abs iMaxBound))
 
-    fromIntegerBounded :: Integer -> Maybe i
-    fromIntegerBounded i
-        | i < iMinBound || i > iMaxBound = Nothing
-        | otherwise                      = Just $ fromInteger i
+    outsideBounds i = i < iMinBound || i > iMaxBound
 
     iMinBound = toInteger (minBound :: i)
     iMaxBound = toInteger (maxBound :: i)
@@ -831,13 +823,15 @@ toUnboundedInteger s@(Scientific c e)
 -- needs to be computed. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program! So don't apply this function
--- to untrusted input but use 'toBoundedInteger' instead.
+-- to untrusted input or use 'toBoundedInteger' instead.
 --
 -- Also see: 'isFloating' or 'isInteger'.
 floatingOrInteger :: (RealFloat r, Integral i) => Scientific -> Either r i
 floatingOrInteger s@(Scientific c e)
     | isInteger s = Right (toIntegral c e)
     | otherwise   = Left  (toRealFloat s)
+
+{-# INLINABLE floatingOrInteger #-}
 
 
 ----------------------------------------------------------------------
