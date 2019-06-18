@@ -21,6 +21,9 @@
 
 	* Make / on Scientifics slightly more efficient.
 
+	* Fix the Show instance to surround negative numbers with parentheses when
+	necessary.
+
 0.3.6.2
 	* Due to a regression introduced in 0.3.4.14 the RealFrac methods
 	and floatingOrInteger became vulnerable to a space blowup when

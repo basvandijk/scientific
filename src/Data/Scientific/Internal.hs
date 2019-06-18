@@ -953,11 +953,16 @@ isE c = c == 'e' || c == 'E'
 
 -- | See 'formatScientific' if you need more control over the rendering.
 instance Show Scientific where
-    show s | coefficient s < 0 = '-':showPositive (-s)
-           | otherwise         =     showPositive   s
+    showsPrec d s
+        | coefficient s < 0 = showParen (d > prefixMinusPrec) $
+               showChar '-' . showPositive (-s)
+        | otherwise         = showPositive   s
       where
-        showPositive :: Scientific -> String
-        showPositive = fmtAsGeneric . toDecimalDigits
+        prefixMinusPrec :: Int
+        prefixMinusPrec = 6
+
+        showPositive :: Scientific -> ShowS
+        showPositive = showString . fmtAsGeneric . toDecimalDigits
 
         fmtAsGeneric :: ([Int], Int) -> String
         fmtAsGeneric x@(_is, e)

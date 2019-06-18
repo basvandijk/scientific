@@ -112,6 +112,9 @@ main = testMain $ testGroup "scientific"
 
   , testGroup "Formatting"
     [ testProperty "read . show == id" $ \s -> read (show s) === s
+    , testCase "show (Just 1)"    $ testShow (Just 1)    "Just 1.0"
+    , testCase "show (Just 0)"    $ testShow (Just 0)    "Just 0.0"
+    , testCase "show (Just (-1))" $ testShow (Just (-1)) "Just (-1.0)"
 
     , testGroup "toDecimalDigits"
       [ smallQuick "laws"
@@ -282,6 +285,9 @@ testReads inp out = reads inp @?= out
 
 testRead :: String -> Scientific -> Assertion
 testRead inp out = read inp @?= out
+
+testShow :: Maybe Scientific -> String -> Assertion
+testShow inp out = show inp @?= out
 
 testScientificP :: String -> [(Scientific, String)] -> Assertion
 testScientificP inp out = readP_to_S Scientific.scientificP inp @?= out
