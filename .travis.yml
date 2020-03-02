@@ -90,8 +90,8 @@ install:
 # any command which exits with a non-zero exit code causes the build to fail.
 script:
   # test that source-distributions can be generated
-  - (cd "." && cabal sdist)
-  - mv "."/dist/scientific-*.tar.gz ${DISTDIR}/
+  - (cd "." && cabal new-sdist)
+  - mv "."/dist-newstyle/sdist/scientific-*.tar.gz ${DISTDIR}/
   - cd ${DISTDIR} || false
   - find . -maxdepth 1 -name '*.tar.gz' -exec tar -xvf '{}' \;
   - "printf 'packages: scientific-*/*.cabal\\n' > cabal.project"
