@@ -41,7 +41,7 @@
 --
 -- This module is designed to be imported qualified:
 --
--- @import Data.Scientific as Scientific@
+-- @import qualified Data.Scientific as Scientific@
 module Data.Scientific
     ( Scientific
 
