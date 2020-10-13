@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, OverloadedStrings #-}
+{-# LANGUAGE CPP, OverloadedStrings, Safe #-}
 
 module Data.Text.Lazy.Builder.Scientific
     ( scientificBuilder

@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE UnboxedTuples #-}
 
 module Utils

@@ -1,3 +1,8 @@
+0.4.0.0
+	* Add Safe Haskell support.
+
+	* Remove unsafeFromRational from Data.Scientific exports.
+
 0.3.7.0
 	* Normalize scientific numbers on construction.
 

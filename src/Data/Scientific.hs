@@ -1,3 +1,5 @@
+{-# LANGUAGE Trustworthy #-}
+
 -- |
 -- Module      :  Data.Scientific
 -- Copyright   :  Bas van Dijk 2013
@@ -58,7 +60,6 @@ module Data.Scientific
 
       -- * Conversions
       -- ** Rational
-    , unsafeFromRational
     , fromRationalRepetend
     , fromRationalRepetendLimited
     , fromRationalRepetendUnlimited

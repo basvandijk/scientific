@@ -3,6 +3,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE Unsafe #-}
 {-# LANGUAGE PatternGuards #-}
 
 module Data.Scientific.Internal
