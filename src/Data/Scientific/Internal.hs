@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnboxedTuples #-}
@@ -97,6 +98,8 @@ import           Data.Bits                    (shiftR)
 import GHC.Integer        (quotRemInteger, quotInteger)
 import GHC.Integer.Compat (divInteger)
 import Utils              (roundTo)
+import Language.Haskell.TH.Syntax
+
 
 
 ----------------------------------------------------------------------
@@ -116,7 +119,7 @@ data Scientific = Scientific
       -- ^ The coefficient of a scientific number.
     , base10Exponent :: {-# UNPACK #-} !Int
       -- ^ The base-10 exponent of a scientific number.
-    } deriving (Typeable, Data)
+    } deriving (Typeable, Data, Lift)
 
 -- | @scientific c e@ constructs a scientific number which corresponds
 -- to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@.
