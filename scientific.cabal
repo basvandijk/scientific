@@ -83,7 +83,7 @@ library
                      , primitive   >= 0.1
                      , containers  >= 0.1
                      , binary      >= 0.4.1
-                     , template-haskell
+                     , template-haskell >= 2.14.0.0
 
   if flag(bytestring-builder)
       build-depends: bytestring         >= 0.9    && < 0.10.4
