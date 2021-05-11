@@ -18,7 +18,6 @@ import           Data.Int
 import           Data.Word
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
-import           Test.Tasty.Runners.AntXML
 import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion, assertBool)
 import qualified Test.SmallCheck                    as SC
 import qualified Test.SmallCheck.Series             as SC
@@ -279,7 +278,7 @@ main = testMain $ testGroup "scientific"
   ]
 
 testMain :: TestTree -> IO ()
-testMain = defaultMainWithIngredients (antXMLRunner:defaultIngredients)
+testMain = defaultMainWithIngredients defaultIngredients
 
 testReads :: String -> [(Scientific, String)] -> Assertion
 testReads inp out = reads inp @?= out
