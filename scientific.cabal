@@ -135,7 +135,6 @@ test-suite test-scientific
     , scientific
     , smallcheck        >=1.0
     , tasty             >=1.4.0.1
-    , tasty-ant-xml     >=1.1.8
     , tasty-hunit       >=0.8
     , tasty-quickcheck  >=0.8
     , tasty-smallcheck  >=0.2
