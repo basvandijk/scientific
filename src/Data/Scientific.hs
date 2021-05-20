@@ -5,6 +5,13 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE PatternGuards #-}
 
+#if __GLASGOW_HASKELL__ >= 800
+{-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE StandaloneDeriving #-}
+#else
+{-# LANGUAGE TemplateHaskell #-}
+#endif
+
 -- |
 -- Module      :  Data.Scientific
 -- Copyright   :  Bas van Dijk 2013
@@ -140,6 +147,8 @@ import GHC.Integer.Compat (divInteger)
 import Utils              (roundTo)
 
 
+import Language.Haskell.TH.Syntax (Lift (..))
+
 ----------------------------------------------------------------------
 -- Type
 ----------------------------------------------------------------------
@@ -187,10 +196,18 @@ data Scientific = Scientific
 scientific :: Integer -> Int -> Scientific
 scientific = Scientific
 
-
 ----------------------------------------------------------------------
 -- Instances
 ----------------------------------------------------------------------
+
+#if __GLASGOW_HASKELL__ >= 800
+-- | @since 0.3.7.0
+deriving instance Lift Scientific
+#else
+instance Lift Scientific where
+    lift (Scientific c e) = [| Scientific c e |]
+#endif
+
 
 instance NFData Scientific where
     rnf (Scientific _ _) = ()
