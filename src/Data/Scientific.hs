@@ -163,6 +163,20 @@ data Scientific = Scientific
       -- in 'toDecimalDigits'.
       --
       -- Use 'normalize' to do manual normalization.
+      --
+      -- /WARNING:/ 'coefficient' and 'base10exponent' violate
+      -- substantivity of 'Eq'.
+      --
+      -- >>> let x = scientific 1 2
+      -- >>> let y = scientific 100 0
+      -- >>> x == y
+      -- True
+      --
+      -- but
+      --
+      -- >>> (coefficient x == coefficient y, base10Exponent x == base10Exponent y)
+      -- (False,False)
+      --
 
     , base10Exponent :: {-# UNPACK #-} !Int
       -- ^ The base-10 exponent of a scientific number.
@@ -184,6 +198,13 @@ instance NFData Scientific where
 -- | A hash can be safely calculated from a @Scientific@. No magnitude @10^e@ is
 -- calculated so there's no risk of a blowup in space or time when hashing
 -- scientific numbers coming from untrusted sources.
+--
+-- >>> import Data.Hashable (hash)
+-- >>> let x = scientific 1 2
+-- >>> let y = scientific 100 0
+-- >>> (x == y, hash x == hash y)
+-- (True,True)
+--
 instance Hashable Scientific where
     hashWithSalt salt s = salt `hashWithSalt` c `hashWithSalt` e
       where
