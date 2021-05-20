@@ -7,6 +7,8 @@
 
 	* Add (Template Haskell) Lift Scientific instance
 
+	* Mark modules as Safe or Trustworthy (Safe Haskell).
+
 0.3.6.2
 	* Due to a regression introduced in 0.3.4.14 the RealFrac methods
 	and floatingOrInteger became vulnerable to a space blowup when

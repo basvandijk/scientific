@@ -4,6 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE Trustworthy #-}
 
 #if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE DeriveLift #-}
@@ -105,7 +106,6 @@ module Data.Scientific
 
 import           Control.Exception            (throw, ArithException(DivideByZero))
 import           Control.Monad                (mplus)
-import           Control.Monad.ST             (runST)
 import           Control.DeepSeq              (NFData, rnf)
 import           Data.Binary                  (Binary, get, put)
 import           Data.Char                    (intToDigit, ord)
@@ -115,7 +115,6 @@ import           Data.Int                     (Int8, Int16, Int32, Int64)
 import qualified Data.Map            as M     (Map, empty, insert, lookup)
 import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
-import qualified Data.Primitive.Array as Primitive
 import           Data.Word                    (Word8, Word16, Word32, Word64)
 import           Math.NumberTheory.Logarithms (integerLog10')
 import qualified Numeric                      (floatToDigits)
@@ -136,16 +135,8 @@ import           Data.Word                    (Word)
 import           Control.Applicative          ((<*>))
 #endif
 
-#if MIN_VERSION_base(4,5,0)
-import           Data.Bits                    (unsafeShiftR)
-#else
-import           Data.Bits                    (shiftR)
-#endif
-
-import GHC.Integer        (quotRemInteger, quotInteger)
-import GHC.Integer.Compat (divInteger)
-import Utils              (roundTo)
-
+import GHC.Integer.Compat (quotRemInteger, quotInteger, divInteger)
+import Utils              (maxExpt, roundTo, magnitude)
 
 import Language.Haskell.TH.Syntax (Lift (..))
 
@@ -697,46 +688,8 @@ toIntegral (Scientific c e) = fromInteger c * magnitude e
 {-# INLINE toIntegral #-}
 
 
-----------------------------------------------------------------------
--- Exponentiation with a cache for the most common numbers.
-----------------------------------------------------------------------
 
--- | The same limit as in GHC.Float.
-maxExpt :: Int
-maxExpt = 324
 
-expts10 :: Primitive.Array Integer
-expts10 = runST $ do
-    ma <- Primitive.newArray maxExpt uninitialised
-    Primitive.writeArray ma 0  1
-    Primitive.writeArray ma 1 10
-    let go !ix
-          | ix == maxExpt = Primitive.unsafeFreezeArray ma
-          | otherwise = do
-              Primitive.writeArray ma  ix        xx
-              Primitive.writeArray ma (ix+1) (10*xx)
-              go (ix+2)
-          where
-            xx = x * x
-            x  = Primitive.indexArray expts10 half
-#if MIN_VERSION_base(4,5,0)
-            !half = ix `unsafeShiftR` 1
-#else
-            !half = ix `shiftR` 1
-#endif
-    go 2
-
-uninitialised :: error
-uninitialised = error "Data.Scientific: uninitialised element"
-
--- | @magnitude e == 10 ^ e@
-magnitude :: Num a => Int -> a
-magnitude e | e < maxExpt = cachedPow10 e
-            | otherwise   = cachedPow10 hi * 10 ^ (e - hi)
-    where
-      cachedPow10 = fromInteger . Primitive.indexArray expts10
-
-      hi = maxExpt - 1
 
 
 ----------------------------------------------------------------------
