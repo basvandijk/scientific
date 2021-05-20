@@ -5,6 +5,13 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE PatternGuards #-}
 
+#if __GLASGOW_HASKELL__ >= 800
+{-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE StandaloneDeriving #-}
+#else
+{-# LANGUAGE TemplateHaskell #-}
+#endif
+
 -- |
 -- Module      :  Data.Scientific
 -- Copyright   :  Bas van Dijk 2013
@@ -48,7 +55,7 @@
 --
 -- This module is designed to be imported qualified:
 --
--- @import Data.Scientific as Scientific@
+-- @import qualified Data.Scientific as Scientific@
 module Data.Scientific
     ( Scientific
 
@@ -140,6 +147,8 @@ import GHC.Integer.Compat (divInteger)
 import Utils              (roundTo)
 
 
+import Language.Haskell.TH.Syntax (Lift (..))
+
 ----------------------------------------------------------------------
 -- Type
 ----------------------------------------------------------------------
@@ -163,6 +172,20 @@ data Scientific = Scientific
       -- in 'toDecimalDigits'.
       --
       -- Use 'normalize' to do manual normalization.
+      --
+      -- /WARNING:/ 'coefficient' and 'base10exponent' violate
+      -- substantivity of 'Eq'.
+      --
+      -- >>> let x = scientific 1 2
+      -- >>> let y = scientific 100 0
+      -- >>> x == y
+      -- True
+      --
+      -- but
+      --
+      -- >>> (coefficient x == coefficient y, base10Exponent x == base10Exponent y)
+      -- (False,False)
+      --
 
     , base10Exponent :: {-# UNPACK #-} !Int
       -- ^ The base-10 exponent of a scientific number.
@@ -173,10 +196,18 @@ data Scientific = Scientific
 scientific :: Integer -> Int -> Scientific
 scientific = Scientific
 
-
 ----------------------------------------------------------------------
 -- Instances
 ----------------------------------------------------------------------
+
+#if __GLASGOW_HASKELL__ >= 800
+-- | @since 0.3.7.0
+deriving instance Lift Scientific
+#else
+instance Lift Scientific where
+    lift (Scientific c e) = [| Scientific c e |]
+#endif
+
 
 instance NFData Scientific where
     rnf (Scientific _ _) = ()
@@ -184,6 +215,13 @@ instance NFData Scientific where
 -- | A hash can be safely calculated from a @Scientific@. No magnitude @10^e@ is
 -- calculated so there's no risk of a blowup in space or time when hashing
 -- scientific numbers coming from untrusted sources.
+--
+-- >>> import Data.Hashable (hash)
+-- >>> let x = scientific 1 2
+-- >>> let y = scientific 100 0
+-- >>> (x == y, hash x == hash y)
+-- (True,True)
+--
 instance Hashable Scientific where
     hashWithSalt salt s = salt `hashWithSalt` c `hashWithSalt` e
       where
@@ -295,15 +333,23 @@ instance Real Scientific where
 -- | /WARNING:/ 'recip' and '/' will throw an error when their outputs are
 -- <https://en.wikipedia.org/wiki/Repeating_decimal repeating decimals>.
 --
+-- These methods also compute 'Integer' magnitudes (@10^e@). If these methods
+-- are applied to arguments which have huge exponents this could fill up all
+-- space and crash your program! So don't apply these methods to scientific
+-- numbers coming from untrusted sources.
+--
 -- 'fromRational' will throw an error when the input 'Rational' is a repeating
 -- decimal.  Consider using 'fromRationalRepetend' for these rationals which
 -- will detect the repetition and indicate where it starts.
 instance Fractional Scientific where
     recip = fromRational . recip . toRational
-    {-# INLINABLE recip #-}
 
-    x / y = fromRational $ toRational x / toRational y
-    {-# INLINABLE (/) #-}
+    Scientific c1 e1 / Scientific c2 e2
+        | d < 0     = fromRational (x / (fromInteger (magnitude (-d))))
+        | otherwise = fromRational (x *  fromInteger (magnitude   d))
+      where
+        d = e1 - e2
+        x = c1 % c2
 
     fromRational rational =
         case mbRepetendIx of
@@ -979,11 +1025,16 @@ isE c = c == 'e' || c == 'E'
 
 -- | See 'formatScientific' if you need more control over the rendering.
 instance Show Scientific where
-    show s | coefficient s < 0 = '-':showPositive (-s)
-           | otherwise         =     showPositive   s
+    showsPrec d s
+        | coefficient s < 0 = showParen (d > prefixMinusPrec) $
+               showChar '-' . showPositive (-s)
+        | otherwise         = showPositive   s
       where
-        showPositive :: Scientific -> String
-        showPositive = fmtAsGeneric . toDecimalDigits
+        prefixMinusPrec :: Int
+        prefixMinusPrec = 6
+
+        showPositive :: Scientific -> ShowS
+        showPositive = showString . fmtAsGeneric . toDecimalDigits
 
         fmtAsGeneric :: ([Int], Int) -> String
         fmtAsGeneric x@(_is, e)
