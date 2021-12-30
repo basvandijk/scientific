@@ -96,7 +96,7 @@ library
     , hashable            >=1.2.7.0
     , integer-logarithms  >=1.0.3.1
     , primitive           >=0.7.1.0
-    , text                >=1.2.3.0
+    , text                >=1.2.3.0 && < 2.1
 
   if flag(bytestring-builder)
     build-depends:
