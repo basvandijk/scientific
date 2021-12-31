@@ -1,6 +1,6 @@
 name:               scientific
 version:            0.3.7.0
-x-revision:         1
+x-revision:         2
 synopsis:           Numbers represented using scientific notation
 description:
   "Data.Scientific" provides the number type 'Scientific'. Scientific numbers are
@@ -96,7 +96,7 @@ library
     , integer-logarithms  >=1.0.3.1 && <1.1
     , primitive           >=0.7.1.0 && <0.8
     , template-haskell    >=2.8     && <2.19
-    , text                >=1.2.3.0 && <1.3
+    , text                >=1.2.3.0 && <1.3 || >=2.0 && <2.1
 
   if flag(bytestring-builder)
     build-depends:
