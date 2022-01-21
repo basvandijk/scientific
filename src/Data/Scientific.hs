@@ -7,8 +7,7 @@
 {-# LANGUAGE Trustworthy #-}
 
 #if __GLASGOW_HASKELL__ >= 800
-{-# LANGUAGE DeriveLift #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 #else
 {-# LANGUAGE TemplateHaskell #-}
 #endif
@@ -191,13 +190,15 @@ scientific = Scientific
 -- Instances
 ----------------------------------------------------------------------
 
-#if __GLASGOW_HASKELL__ >= 800
 -- | @since 0.3.7.0
-deriving instance Lift Scientific
-#else
 instance Lift Scientific where
-    lift (Scientific c e) = [| Scientific c e |]
+#if MIN_VERSION_template_haskell(2,16,0)
+    liftTyped s = [|| Scientific c e ||]
+#else
+    lift s = [| Scientific c e |]
 #endif
+      where
+        Scientific c e = normalize s
 
 
 instance NFData Scientific where
