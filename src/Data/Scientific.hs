@@ -66,6 +66,7 @@ module Data.Scientific
 
       -- ** Floating & integer
     , floatingOrInteger
+    , delayedFloatingOrInteger
     , toRealFloat
     , toBoundedRealFloat
     , toBoundedInteger

@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeApplications #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -244,6 +245,24 @@ main = testMain $ testGroup "scientific"
           (\(d::Double) -> genericIsFloating d QC.==>
              (floatingOrInteger (realToFrac d) :: Either Double Integer) == Left d)
       ]
+#if __GLASGOW_HASKELL__ >= 902
+    , testGroup "delayedFloatingOrInteger"
+      [ testProperty "correct conversion" $ \s ->
+            case delayedFloatingOrInteger s of
+              Left  d -> d @Double == toRealFloat s
+              Right i -> i @Int    == fromInteger (coefficient s) * 10^(base10Exponent s)
+      , testProperty "Integer == Right" $ \(i::Integer) ->
+          case delayedFloatingOrInteger (fromInteger i) of Left _ -> False
+                                                           Right i' -> i' == i
+      , smallQuick "Double == Left"
+          (\(d::Double) -> genericIsFloating d SC.==>
+             (case delayedFloatingOrInteger (realToFrac d) of Right _ -> False
+                                                              Left d' -> d' == d))
+          (\(d::Double) -> genericIsFloating d QC.==>
+             (case delayedFloatingOrInteger (realToFrac d) of Right _ -> False
+                                                              Left d' -> d' == d))
+      ]
+#endif
     , testGroup "toBoundedInteger"
       [ testGroup "correct conversion"
         [ testProperty "Int64"       $ toBoundedIntegerConversion (undefined :: Int64)

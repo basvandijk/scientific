@@ -4,6 +4,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE PatternGuards #-}
+#if __GLASGOW_HASKELL__ >= 902
+{-# LANGUAGE ImpredicativeTypes #-}
+#endif
 
 module Data.Scientific.Internal
     ( Scientific
@@ -31,6 +34,7 @@ module Data.Scientific.Internal
 
       -- ** Floating & integer
     , floatingOrInteger
+    , delayedFloatingOrInteger
     , toRealFloat
     , toBoundedRealFloat
     , toBoundedInteger
@@ -833,7 +837,30 @@ floatingOrInteger s@(Scientific c e)
 
 {-# INLINABLE floatingOrInteger #-}
 
-
+#if __GLASGOW_HASKELL__ >= 902
+-- | @delayedFloatingOrInteger@ is like 'floatingOrInteger', but it allows
+-- callers to delay their choice of type until after the decision whether
+-- the scientific is floating or integral.
+--
+-- /WARNING:/ The returned "numbers" are actually /functions/ that perform
+-- the conversion, based on the 'RealFloat' or 'Integral' instances they
+-- are given. This means that repeated use of these may repeat
+-- computation (depending on optimisations). Instead, if you need to use
+-- the value multiple times, store the result in a separate variable to
+-- avoid this recomputation.
+--
+-- /WARNING:/ All the caveats of 'floatingOrInteger' also apply.
+--
+-- This function is available only in versions of GHC that support
+-- impredicative types, 9.2 and above.
+delayedFloatingOrInteger :: Scientific
+                         -> Either (forall r. RealFloat r => r)
+                                   (forall i. Integral i => i)
+delayedFloatingOrInteger s@(Scientific c e)
+    | isInteger s = Right (toIntegral c e)
+    | otherwise   = Left  (toRealFloat s)
+#endif
+    
 ----------------------------------------------------------------------
 -- Predicates
 ----------------------------------------------------------------------
