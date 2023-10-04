@@ -1,3 +1,4 @@
 branches:   master scientific-0.3
 benchmarks: False
 docspec:    True
+head-hackage: False
