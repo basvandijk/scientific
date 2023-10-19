@@ -764,10 +764,14 @@ toBoundedRealFloat s@(Scientific c e)
 
 -- | Convert a `Scientific` to a bounded integer.
 --
--- If the given `Scientific` is not an integer or doesn't fit in the
--- target representation, it will return `Nothing`.
+-- Returns `Nothing` iff either:
 --
--- This function also guards against computing huge Integer magnitudes (@10^e@)
+--  * The given Scientific does not fit in the target representation (via the `Bounded` constraint)
+--  * The given Scientific is not an integer but a float.
+--
+-- If you need to distinguish between the cases, you can first use `isFloating`.
+--
+-- __Safe__: This function guards against computing huge Integer magnitudes (@10^e@)
 -- that could fill up all space and crash your program.
 toBoundedInteger :: forall i. (Integral i, Bounded i) => Scientific -> Maybe i
 toBoundedInteger s@(Scientific c e)
