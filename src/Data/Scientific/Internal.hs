@@ -62,7 +62,9 @@ import           Control.DeepSeq              (NFData, rnf)
 import           Data.Binary                  (Binary, get, put)
 import           Data.Char                    (intToDigit, ord)
 import           Data.Data                    (Data)
+#ifdef HASHABLE
 import           Data.Hashable                (Hashable(..))
+#endif
 import           Data.Int                     (Int8, Int16, Int32, Int64)
 import qualified Data.Map            as M     (Map, empty, insert, lookup)
 import           Data.Ratio                   ((%), numerator, denominator)
@@ -160,11 +162,13 @@ unsafeScientificFromNonNormalized c z e = Scientific (c `quotInteger` magnitude 
 instance NFData Scientific where
     rnf (Scientific _ _) = ()
 
+#ifdef HASHABLE
 -- | A hash can be safely calculated from a @Scientific@. No magnitude @10^e@ is
 -- calculated so there's no risk of a blowup in space or time when hashing
 -- scientific numbers coming from untrusted sources.
 instance Hashable Scientific where
     hashWithSalt salt (Scientific c e) = salt `hashWithSalt` c `hashWithSalt` e
+#endif
 
 -- | Note that in the future I intend to change the type of the 'base10Exponent'
 -- from @Int@ to @Integer@. To be forward compatible the @Binary@ instance
