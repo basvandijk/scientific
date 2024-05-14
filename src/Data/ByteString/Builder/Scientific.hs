@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, OverloadedStrings, Safe #-}
+{-# LANGUAGE OverloadedStrings, Safe #-}
 
 module Data.ByteString.Builder.Scientific
     ( scientificBuilder
@@ -17,18 +17,7 @@ import           Data.ByteString.Builder.Extra (byteStringCopy)
 
 import Utils (roundTo, i2d)
 
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid                  (mempty)
-#endif
-
-#if MIN_VERSION_base(4,5,0)
 import Data.Monoid                  ((<>))
-#else
-import Data.Monoid                  (Monoid, mappend)
-(<>) :: Monoid a => a -> a -> a
-(<>) = mappend
-infixr 6 <>
-#endif
 
 
 -- | A @ByteString@ @Builder@ which renders a scientific number to full

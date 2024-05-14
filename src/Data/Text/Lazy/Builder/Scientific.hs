@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, OverloadedStrings, Safe #-}
+{-# LANGUAGE OverloadedStrings, Safe #-}
 
 module Data.Text.Lazy.Builder.Scientific
     ( scientificBuilder
@@ -16,14 +16,7 @@ import Data.Text.Lazy.Builder.Int   (decimal)
 import qualified Data.Text as T     (replicate)
 import Utils (roundTo, i2d)
 
-#if MIN_VERSION_base(4,5,0)
 import Data.Monoid                  ((<>))
-#else
-import Data.Monoid                  (Monoid, mappend)
-(<>) :: Monoid a => a -> a -> a
-(<>) = mappend
-infixr 6 <>
-#endif
 
 -- | A @Text@ @Builder@ which renders a scientific number to full
 -- precision, using standard decimal notation for arguments whose

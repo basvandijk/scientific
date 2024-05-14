@@ -1,17 +1,11 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE Trustworthy #-}
-
-#if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE StandaloneDeriving #-}
-#else
-{-# LANGUAGE TemplateHaskell #-}
-#endif
 
 -- |
 -- Module      :  Data.Scientific
@@ -125,16 +119,6 @@ import qualified Text.ParserCombinators.ReadP    as ReadP
 import           Text.ParserCombinators.ReadP     ( ReadP )
 import           Data.Text.Lazy.Builder.RealFloat (FPFormat(..))
 
-#if !MIN_VERSION_base(4,9,0)
-import           Control.Applicative          ((*>))
-#endif
-
-#if !MIN_VERSION_base(4,8,0)
-import           Data.Functor                 ((<$>))
-import           Data.Word                    (Word)
-import           Control.Applicative          ((<*>))
-#endif
-
 import GHC.Integer.Compat (quotRemInteger, quotInteger, divInteger)
 import Utils              (maxExpt, roundTo, magnitude)
 
@@ -191,14 +175,8 @@ scientific = Scientific
 -- Instances
 ----------------------------------------------------------------------
 
-#if __GLASGOW_HASKELL__ >= 800
 -- | @since 0.3.7.0
 deriving instance Lift Scientific
-#else
-instance Lift Scientific where
-    lift (Scientific c e) = [| Scientific c e |]
-#endif
-
 
 instance NFData Scientific where
     rnf (Scientific _ _) = ()
