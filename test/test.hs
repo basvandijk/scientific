@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -10,9 +9,6 @@
 
 module Main where
 
-#if !MIN_VERSION_base(4,8,0)
-import           Control.Applicative
-#endif
 import           Control.Monad
 import           Data.Int
 import           Data.Word
@@ -468,8 +464,4 @@ bigIntGen :: QC.Gen Int
 bigIntGen = QC.sized $ \size -> QC.resize (size * 1000) intGen
 
 intGen :: QC.Gen Int
-#if MIN_VERSION_QuickCheck(2,7,0)
 intGen = QC.arbitrary
-#else
-intGen = QC.sized $ \n -> QC.choose (-n, n)
-#endif

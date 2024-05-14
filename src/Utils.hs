@@ -17,11 +17,7 @@ import GHC.Base (Int(I#), Char(C#), chr#, ord#, (+#))
 import qualified Data.Primitive.Array as Primitive
 import           Control.Monad.ST             (runST)
 
-#if MIN_VERSION_base(4,5,0)
 import           Data.Bits                    (unsafeShiftR)
-#else
-import           Data.Bits                    (shiftR)
-#endif
 
 roundTo :: Int -> [Int] -> (Int, [Int])
 roundTo d is =
@@ -71,11 +67,7 @@ expts10 = runST $ do
           where
             xx = x * x
             x  = Primitive.indexArray expts10 half
-#if MIN_VERSION_base(4,5,0)
             !half = ix `unsafeShiftR` 1
-#else
-            !half = ix `shiftR` 1
-#endif
     go 2
 
 uninitialised :: error
