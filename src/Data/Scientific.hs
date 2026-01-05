@@ -1036,11 +1036,10 @@ formatScientific format mbDecs s
             case is of
              [0] -> '0' :'.' : take dec' (repeat '0') ++ "e0"
              _ ->
-              let
-               (ei,is') = roundTo (dec'+1) is
-               (d:ds') = map intToDigit (if ei > 0 then init is' else is')
-              in
-              d:'.':ds' ++ 'e':show (e-1+ei)
+              let (ei,is') = roundTo (dec'+1) is
+              in case map intToDigit (if ei > 0 then init is' else is') of
+                   [] -> ""
+                   d:ds' -> d:'.':ds' ++ 'e':show (e-1+ei)
 
     fmtAsFixedDecs :: Int -> ([Int], Int) -> String
     fmtAsFixedDecs dec (is, e) =
@@ -1052,11 +1051,10 @@ formatScientific format mbDecs s
          in
          mk0 ls ++ (if null rs then "" else '.':rs)
         else
-         let
-          (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
-          d:ds' = map intToDigit (if ei > 0 then is' else 0:is')
-         in
-         d : (if null ds' then "" else '.':ds')
+         let (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
+         in case map intToDigit (if ei > 0 then is' else 0:is') of
+             [] -> ""
+             d:ds' -> d : (if null ds' then "" else '.':ds')
       where
         mk0 ls = case ls of { "" -> "0" ; _ -> ls}
 
