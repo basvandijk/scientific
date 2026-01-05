@@ -59,11 +59,10 @@ formatScientificBuilder fmt decs scntfc
                 byteStringCopy (BC8.replicate dec' '0') <>
                 byteStringCopy "e0"
          _ ->
-          let
-           (ei,is') = roundTo (dec'+1) is
-           (d:ds') = map i2d (if ei > 0 then init is' else is')
-          in
-          char8 d <> char8 '.' <> string8 ds' <> char8 'e' <> intDec (e-1+ei)
+          let (ei,is') = roundTo (dec'+1) is
+          in case map i2d (if ei > 0 then init is' else is') of
+                [] -> mempty
+                d:ds' -> char8 d <> char8 '.' <> string8 ds' <> char8 'e' <> intDec (e-1+ei)
      Fixed ->
       let
        mk0 ls = case ls of { "" -> char8 '0' ; _ -> string8 ls}
@@ -89,8 +88,7 @@ formatScientificBuilder fmt decs scntfc
          in
          mk0 ls <> (if null rs then mempty else char8 '.' <> string8 rs)
         else
-         let
-          (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
-          d:ds' = map i2d (if ei > 0 then is' else 0:is')
-         in
-         char8 d <> (if null ds' then mempty else char8 '.' <> string8 ds')
+         let (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
+         in case map i2d (if ei > 0 then is' else 0:is') of
+              [] -> mempty
+              d:ds' -> char8 d <> (if null ds' then mempty else char8 '.' <> string8 ds')

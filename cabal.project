@@ -1,1 +1,4 @@
 packages: .
+
+package scientific
+  ghc-options: -Wincomplete-uni-patterns
