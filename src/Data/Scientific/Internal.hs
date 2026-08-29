@@ -249,7 +249,9 @@ instance Num Scientific where
 -- Avoid applying 'toRational' (or 'realToFrac') to scientific numbers
 -- coming from an untrusted source and use 'toRealFloat' instead. The
 -- latter guards against excessive space usage.
-instance Real Scientific where
+instance
+  {-# WARNING "Inefficient for large exponents, can fill up all space and crash your program!" #-}
+  Real Scientific where
     toRational (Scientific c e)
       | e < 0     =  c % magnitude (-e)
       | otherwise = (c * magnitude   e) % 1
@@ -503,7 +505,9 @@ toRationalRepetend s r
 -- magnitude @10^e@. If applied to a huge exponent this could take a long
 -- time. Even worse, when the destination type is unbounded (i.e. 'Integer') it
 -- could fill up all space and crash your program!
-instance RealFrac Scientific where
+instance
+    {-# WARNING "Inefficient for large exponents, can fill up all space and crash your program!" #-}
+    RealFrac Scientific where
     -- | The function 'properFraction' takes a Scientific number @s@
     -- and returns a pair @(n,f)@ such that @s = n+f@, and:
     --
