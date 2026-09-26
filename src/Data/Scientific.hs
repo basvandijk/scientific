@@ -1105,7 +1105,24 @@ normalize (Scientific c e)
     | otherwise {- c == 0 -} = Scientific 0 0
 
 normalizePositive :: Integer -> Int -> Scientific
-normalizePositive !c !e = case quotRemInteger c 10 of
-                            (# c', r #)
-                                | r == 0    -> normalizePositive c' (e+1)
-                                | otherwise -> Scientific c e
+normalizePositive !c !e = case stripPowers c 10 of
+                            (c', k) -> Scientific c' (e+k)
+
+-- | @stripPowers c p@ removes all factors of @p@ from @c@. It also returns the
+-- number of removed factors.
+--
+-- The recursive call removes the factors of @p*p@ first, so @k@ factors take
+-- @O(log k)@ divisions. A division by @p@ for each factor takes quadratic time
+-- in the number of digits.
+stripPowers :: Integer -> Integer -> (Integer, Int)
+stripPowers !c !p = case quotRemInteger c p of
+    (# q, r #)
+      | r /= 0    -> (c, 0)
+      | otherwise -> case stripPowers q (p*p) of
+          -- The recursive call removed all factors of p*p, so at most one
+          -- factor of p is left in c'.
+          (c', k) -> case quotRemInteger c' p of
+            -- Each count includes the first division by p, which gives q.
+            (# q', r' #)
+              | r' == 0   -> (q', 2*k + 2)
+              | otherwise -> (c', 2*k + 1)

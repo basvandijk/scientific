@@ -14,7 +14,7 @@ import           Data.Int
 import           Data.Word
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
-import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion, assertBool)
+import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion, assertBool, assertEqual)
 import qualified Test.SmallCheck                    as SC
 import qualified Test.SmallCheck.Series             as SC
 import qualified Test.Tasty.SmallCheck              as SC  (testProperty)
@@ -79,8 +79,19 @@ main = testMain $ testGroup "scientific"
       ]
     , testGroup "toBoundedInteger"
       [ testCase "1e1000000"  $ (toBoundedInteger (read "1e1000000" :: Scientific) :: Maybe Int) @?= Nothing
+      , testCase "10^1000000" $ assertEqual "" Nothing
+          (toBoundedInteger (scientific (10 ^ (1000000 :: Int)) 0) :: Maybe Int)
+      ]
+    , testGroup "normalize"
+      [ testCase "10^1000000" $ let s = normalize (scientific (10 ^ (1000000 :: Int)) 0)
+                                in assertEqual "" (1, 1000000) (coefficient s, base10Exponent s)
       ]
     ]
+
+  , QC.testProperty "normalize removes all trailing zeros" $ \(c :: Integer) (QC.NonNegative (k :: Int)) ->
+      c `mod` 10 /= 0 QC.==>
+        let s = normalize (scientific (c * 10 ^ k) 0)
+        in (coefficient s, base10Exponent s) QC.=== (c, k)
 
   , smallQuick "normalization"
        (SC.over   normalizedScientificSeries $ \s ->
