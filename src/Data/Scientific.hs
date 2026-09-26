@@ -787,24 +787,17 @@ toBoundedRealFloat s@(Scientific c e)
 -- This function also guards against computing huge Integer magnitudes (@10^e@)
 -- that could fill up all space and crash your program.
 toBoundedInteger :: forall i. (Integral i, Bounded i) => Scientific -> Maybe i
-toBoundedInteger s
-    | c == 0    = fromIntegerBounded 0
-    | integral  = if dangerouslyBig
-                  then Nothing
-                  else fromIntegerBounded n
-    | otherwise = Nothing
+toBoundedInteger s@(Scientific c e)
+    | c == 0         = fromIntegerBounded 0
+    | not integral   = Nothing
+    | dangerouslyBig = Nothing
+    | otherwise      = fromIntegerBounded n
   where
-    c = coefficient s
+    integral = isInteger s
+    l  = integerLog10' (abs c) + e
 
-    integral = e >= 0 || e' >= 0
-
-    e  = base10Exponent s
-    e' = base10Exponent s'
-
-    s' = normalize s
-
-    dangerouslyBig = e > limit &&
-                     e > integerLog10' (max (abs iMinBound) (abs iMaxBound))
+    -- whether logarithm of s is bigger than logarithm of source type bounds
+    dangerouslyBig = l > 1 + integerLog10' (max (abs iMinBound) (abs iMaxBound))
 
     fromIntegerBounded :: Integer -> Maybe i
     fromIntegerBounded i
@@ -815,9 +808,12 @@ toBoundedInteger s
     iMaxBound = toInteger (maxBound :: i)
 
     -- This should not be evaluated if the given Scientific is dangerouslyBig
-    -- since it could consume all space and crash the process:
+    -- since it could consume all space and crash the process
     n :: Integer
-    n = toIntegral s'
+    n = case compare e 0 of
+        GT -> c * magnitude e
+        LT -> c `div` magnitude (negate e)
+        EQ -> c
 
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int #-}
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int8 #-}
