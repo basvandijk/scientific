@@ -206,6 +206,9 @@ instance Binary Scientific where
 -- is calculated so there's no risk of a blowup in space or time when comparing
 -- scientific numbers coming from untrusted sources.
 instance Eq Scientific where
+    Scientific c1 e1 == Scientific c2 e2
+        | e1 == e2 = c1 == c2
+
     Scientific c1 e1 == Scientific c2 e2 = case compare c1 0 of
         EQ -> c2 == 0
         LT -> if c2 < 0 then eqScientific1 (-c1) e1 (-c2) e2 else False
@@ -233,6 +236,9 @@ eqScientific1 c1 e1 c2 e2
 -- is calculated so there's no risk of a blowup in space or time when comparing
 -- scientific numbers coming from untrusted sources.
 instance Ord Scientific where
+    compare (Scientific c1 e1) (Scientific c2 e2)
+        | e1 == e2 = compare c1 c2
+
     compare (Scientific c1 e1) (Scientific c2 e2) = case compare c1 0 of
         EQ -> compare 0 c2
         LT -> if c2 < 0 then cmpScientific (-c2) e2 (-c1) e1 else LT
