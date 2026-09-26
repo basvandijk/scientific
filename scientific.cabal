@@ -127,11 +127,9 @@ test-suite test-scientific
     , bytestring
     , QuickCheck        >=2.14.2
     , scientific
-    , smallcheck        >=1.0
     , tasty             >=1.4.0.1
     , tasty-hunit       >=0.8
     , tasty-quickcheck  >=0.8
-    , tasty-smallcheck  >=0.2
     , text
 
 benchmark bench-scientific
