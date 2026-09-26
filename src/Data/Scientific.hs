@@ -869,11 +869,15 @@ isFloating = not . isInteger
 --
 -- Also see: 'floatingOrInteger'.
 isInteger :: Scientific -> Bool
-isInteger s = base10Exponent s  >= 0 ||
-              base10Exponent s' >= 0
-  where
-    s' = normalize s
+isInteger (Scientific c e)
+    | e >= 0 = True
+    | c == 0 = True
+    | integerLog10' (abs c) < negate e = False
 
+    -- here the magnitude (negate e) is smaller than c because of previous check.
+    -- thus dividing by it once is at least as fast as normalising of whole scientific number
+    -- in the worst case.
+    | otherwise = 0 == rem (abs c) (magnitude (negate e))
 
 ----------------------------------------------------------------------
 -- Parsing

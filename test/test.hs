@@ -14,7 +14,7 @@ import           Data.Int
 import           Data.Word
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
-import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion, assertBool)
+import           Test.Tasty.HUnit                          (testCase, (@?=), (@=?), Assertion, assertBool)
 import           Test.QuickCheck                       (Property, (===), (.&&.))
 import qualified Test.QuickCheck                    as QC
 import           Test.Tasty.QuickCheck                 (testProperty)
@@ -54,6 +54,13 @@ main = testMain $ testGroup "scientific"
                   (read ('1' : replicate 1000000 '0' ++ "1"))
               @?= LT
       ]
+
+    , testGroup "isInteger"
+        [ testCase "1e1000000" $ True @=? isInteger (read "1e1000000" :: Scientific)
+        , testCase "10...0e-1" $ True @=? isInteger (read $ '1' : replicate 1000000 '0' ++ "e-1" :: Scientific)
+        , testCase "10...0e-10...0" $ True @=? isInteger (read $ '1' : replicate 1000000 '0' ++ "e-1000000" :: Scientific)
+        , testCase "10...0e-20...0" $ False @=? isInteger (read $ '1' : replicate 1000000 '0' ++ "e-2000000" :: Scientific)
+        ]
 
     , testGroup "RealFrac"
       [ testGroup "floor"
