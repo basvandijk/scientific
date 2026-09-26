@@ -93,7 +93,6 @@ module Data.Scientific
     , normalize
     ) where
 
-
 ----------------------------------------------------------------------
 -- Imports
 ----------------------------------------------------------------------
@@ -224,8 +223,8 @@ eqScientific1 c1 e1 c2 e2
         -- and check that remainder is zero.
         --
         -- I think it doesn't matter in practice.
-        GT -> c1 * 10 ^ (e1 - e2) == c2
-        LT -> c1                  == c2 * 10 ^ (e2 - e1)
+        GT -> c1 * magnitude (e1 - e2) == c2
+        LT -> c1                       == c2 * magnitude (e2 - e1)
   where
     log1 = integerLog10' c1 + e1
     log2 = integerLog10' c2 + e2
@@ -234,29 +233,24 @@ eqScientific1 c1 e1 c2 e2
 -- is calculated so there's no risk of a blowup in space or time when comparing
 -- scientific numbers coming from untrusted sources.
 instance Ord Scientific where
-    compare s1 s2
-        | c1 == c2 && e1 == e2 = EQ
-        | c1 < 0    = if c2 < 0 then cmp (-c2) e2 (-c1) e1 else LT
-        | c1 > 0    = if c2 > 0 then cmp   c1  e1   c2  e2 else GT
-        | otherwise = if c2 > 0 then LT else GT
-      where
-        Scientific c1 e1 = normalize s1
-        Scientific c2 e2 = normalize s2
+    compare (Scientific c1 e1) (Scientific c2 e2) = case compare c1 0 of
+        EQ -> compare 0 c2
+        LT -> if c2 < 0 then cmpScientific (-c2) e2 (-c1) e1 else LT
+        GT -> if c2 > 0 then cmpScientific   c1  e1   c2  e2 else GT
 
-        cmp cx ex cy ey
-            | log10sx < log10sy = LT
-            | log10sx > log10sy = GT
-            | d < 0     = if cx <= (cy `quotInteger` magnitude (-d)) then LT else GT
-            | d > 0     = if cy >  (cx `quotInteger` magnitude   d)  then LT else GT
-            | otherwise = if cx < cy                                 then LT else GT
-          where
-            log10sx = log10cx + ex
-            log10sy = log10cy + ey
-
-            log10cx = integerLog10' cx
-            log10cy = integerLog10' cy
-
-            d = log10cx - log10cy
+-- | Order comparison of positive scientific numbers.
+-- The coeffients c1 and c2 are positive.
+cmpScientific :: Integer -> Int -> Integer -> Int -> Ordering
+cmpScientific c1 e1 c2 e2 = case compare log1 log2 of
+    GT -> GT
+    LT -> LT
+    EQ -> case compare e1 e2 of
+        EQ -> compare c1 c2
+        GT -> compare (c1 * magnitude (e1 - e2)) c2
+        LT -> compare c1 (c2 * magnitude (e2 - e1))
+  where
+    log1 = integerLog10' c1 + e1
+    log2 = integerLog10' c2 + e2
 
 -- | /WARNING:/ '+' and '-' compute the 'Integer' magnitude: @10^e@ where @e@ is
 -- the difference between the @'base10Exponent's@ of the arguments. If these
