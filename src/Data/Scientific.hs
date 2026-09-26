@@ -787,24 +787,17 @@ toBoundedRealFloat s@(Scientific c e)
 -- This function also guards against computing huge Integer magnitudes (@10^e@)
 -- that could fill up all space and crash your program.
 toBoundedInteger :: forall i. (Integral i, Bounded i) => Scientific -> Maybe i
-toBoundedInteger s
-    | c == 0    = fromIntegerBounded 0
-    | integral  = if dangerouslyBig
-                  then Nothing
-                  else fromIntegerBounded n
-    | otherwise = Nothing
+toBoundedInteger s@(Scientific c e)
+    | c == 0         = fromIntegerBounded 0
+    | not integral   = Nothing
+    | dangerouslyBig = Nothing
+    | otherwise      = fromIntegerBounded n
   where
-    c = coefficient s
+    integral = isInteger s
+    l  = integerLog10' (abs c) + e
 
-    integral = e >= 0 || e' >= 0
-
-    e  = base10Exponent s
-    e' = base10Exponent s'
-
-    s' = normalize s
-
-    dangerouslyBig = e > limit &&
-                     e > integerLog10' (max (abs iMinBound) (abs iMaxBound))
+    -- whether logarithm of s is bigger than logarithm of source type bounds
+    dangerouslyBig = l > 1 + integerLog10' (max (abs iMinBound) (abs iMaxBound))
 
     fromIntegerBounded :: Integer -> Maybe i
     fromIntegerBounded i
@@ -815,9 +808,12 @@ toBoundedInteger s
     iMaxBound = toInteger (maxBound :: i)
 
     -- This should not be evaluated if the given Scientific is dangerouslyBig
-    -- since it could consume all space and crash the process:
+    -- since it could consume all space and crash the process
     n :: Integer
-    n = toIntegral s'
+    n = case compare e 0 of
+        GT -> c * magnitude e
+        LT -> c `div` magnitude (negate e)
+        EQ -> c
 
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int #-}
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int8 #-}
@@ -869,11 +865,15 @@ isFloating = not . isInteger
 --
 -- Also see: 'floatingOrInteger'.
 isInteger :: Scientific -> Bool
-isInteger s = base10Exponent s  >= 0 ||
-              base10Exponent s' >= 0
-  where
-    s' = normalize s
+isInteger (Scientific c e)
+    | e >= 0 = True
+    | c == 0 = True
+    | integerLog10' (abs c) < negate e = False
 
+    -- here the magnitude (negate e) is smaller than c because of previous check.
+    -- thus dividing by it once is at least as fast as normalising of whole scientific number
+    -- in the worst case.
+    | otherwise = 0 == rem (abs c) (magnitude (negate e))
 
 ----------------------------------------------------------------------
 -- Parsing

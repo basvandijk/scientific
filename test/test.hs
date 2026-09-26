@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeApplications #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -14,7 +15,7 @@ import           Data.Int
 import           Data.Word
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
-import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion, assertBool)
+import           Test.Tasty.HUnit                          (testCase, (@?=), (@=?), Assertion, assertBool)
 import           Test.QuickCheck                       (Property, (===), (.&&.))
 import qualified Test.QuickCheck                    as QC
 import           Test.Tasty.QuickCheck                 (testProperty)
@@ -55,6 +56,18 @@ main = testMain $ testGroup "scientific"
               @?= LT
       ]
 
+    , testGroup "isInteger"
+        [ testCase "1e1000000" $ True @=? isInteger (read "1e1000000" :: Scientific)
+        , testCase "10...0e-1" $ True @=? isInteger (read $ '1' : replicate 1000000 '0' ++ "e-1" :: Scientific)
+        , testCase "10...0e-10...0" $ True @=? isInteger (read $ '1' : replicate 1000000 '0' ++ "e-1000000" :: Scientific)
+        , testCase "10...0e-20...0" $ False @=? isInteger (read $ '1' : replicate 1000000 '0' ++ "e-2000000" :: Scientific)
+        ]
+
+    , testGroup "toBoundedInteger"
+        [ testCase "1e1000000" $ Nothing @=? toBoundedInteger @Int (read "1e1000000") 
+        , testCase "10...0e-1" $ Nothing @=? toBoundedInteger @Int (read $ '1' : replicate 1000000 '0' ++ "e-1")
+        ]
+
     , testGroup "RealFrac"
       [ testGroup "floor"
         [ testCase "1e1000000"   $ (floor (read "1e1000000"   :: Scientific) :: Int) @?= 0
@@ -88,9 +101,6 @@ main = testMain $ testGroup "scientific"
       [ testCase "1e1000000"  $ assertBool "Should be infinity!" $ isInfinite $
                                   (toRealFloat (read "1e1000000" :: Scientific) :: Double)
       , testCase "1e-1000000" $ (toRealFloat (read "1e-1000000" :: Scientific) :: Double) @?= 0
-      ]
-    , testGroup "toBoundedInteger"
-      [ testCase "1e1000000"  $ (toBoundedInteger (read "1e1000000" :: Scientific) :: Maybe Int) @?= Nothing
       ]
     ]
 
@@ -251,7 +261,9 @@ main = testMain $ testGroup "scientific"
       ]
     , testGroup "toBoundedInteger"
       [ testGroup "correct conversion"
-        [ testProperty "Int64"       $ toBoundedIntegerConversion (undefined :: Int64)
+      
+        [ testCase "100e-2" $ toBoundedInteger @Int (read "100e-2") @?= Just 1
+        , testProperty "Int64"       $ toBoundedIntegerConversion (undefined :: Int64)
         , testProperty "Word64"      $ toBoundedIntegerConversion (undefined :: Word64)
         , testProperty "NegativeNum" $ toBoundedIntegerConversion (undefined :: NegativeInt)
         ]
@@ -421,10 +433,13 @@ instance QC.Arbitrary Scientific where
                         <*> bigIntGen)
       , (10, scientific <$> pure 0
                         <*> bigIntGen)
+      , (10, (\c e' e -> scientific (c * 10 ^ min 10 (abs e')) e) <$> QC.arbitrary <*> intGen <*> intGen)
       ]
 
-    shrink s = zipWith scientific (QC.shrink $ Scientific.coefficient s)
-                                  (QC.shrink $ Scientific.base10Exponent s)
+    shrink s = 
+        [ scientific c e
+        | (c, e) <- QC.shrink (Scientific.coefficient s, Scientific.base10Exponent s)
+        ]
 
 nonNegativeScientificGen :: QC.Gen Scientific
 nonNegativeScientificGen =
