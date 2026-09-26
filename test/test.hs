@@ -15,11 +15,9 @@ import           Data.Word
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
 import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion, assertBool)
-import qualified Test.SmallCheck                    as SC
-import qualified Test.SmallCheck.Series             as SC
-import qualified Test.Tasty.SmallCheck              as SC  (testProperty)
+import           Test.QuickCheck                       (Property, (===), (.&&.))
 import qualified Test.QuickCheck                    as QC
-import qualified Test.Tasty.QuickCheck              as QC  (testProperty)
+import           Test.Tasty.QuickCheck                 (testProperty)
 import qualified Data.Binary                        as Binary (encode, decode)
 import qualified Data.Text.Lazy                     as TL  (unpack)
 import qualified Data.Text.Lazy.Builder             as TLB (toLazyText)
@@ -82,15 +80,13 @@ main = testMain $ testGroup "scientific"
       ]
     ]
 
-  , smallQuick "normalization"
-       (SC.over   normalizedScientificSeries $ \s ->
-            s /= 0 SC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
+  , testProperty "normalization"
        (QC.forAll normalizedScientificGen    $ \s ->
             s /= 0 QC.==> abs (Scientific.coefficient s) `mod` 10 /= 0)
 
   , testGroup "Binary"
     [ testProperty "decode . encode == id" $ \s ->
-        Binary.decode (Binary.encode s) === s
+        Binary.decode (Binary.encode s) === theSci s
     ]
 
   , testGroup "Parsing"
@@ -108,18 +104,16 @@ main = testMain $ testGroup "scientific"
     ]
 
   , testGroup "Formatting"
-    [ testProperty "read . show == id" $ \s -> read (show s) === s
+    [ testProperty "read . show == id" $ \s -> read (show s) === theSci s
     , testCase "show (Just 1)"    $ testShow (Just 1)    "Just 1.0"
     , testCase "show (Just 0)"    $ testShow (Just 0)    "Just 0.0"
     , testCase "show (Just (-1))" $ testShow (Just (-1)) "Just (-1.0)"
 
     , testGroup "toDecimalDigits"
-      [ smallQuick "laws"
-          (SC.over   nonNegativeScientificSeries toDecimalDigits_laws)
+      [ testProperty "laws"
           (QC.forAll nonNegativeScientificGen    toDecimalDigits_laws)
 
-      , smallQuick "== Numeric.floatToDigits"
-          (toDecimalDigits_eq_floatToDigits . SC.getNonNegative)
+      , testProperty "== Numeric.floatToDigits"
           (toDecimalDigits_eq_floatToDigits . QC.getNonNegative)
       ]
 
@@ -157,7 +151,7 @@ main = testMain $ testGroup "scientific"
 
   , testGroup "Num"
     [ testGroup "Equal to Rational"
-      [ testProperty "fromInteger" $ \i -> fromInteger i === fromRational (fromInteger i)
+      [ testProperty "fromInteger" $ \i -> fromInteger i === theSci (fromRational (fromInteger i))
       , testProperty "+"           $ bin (+)
       , testProperty "-"           $ bin (-)
       , testProperty "*"           $ bin (*)
@@ -166,27 +160,26 @@ main = testMain $ testGroup "scientific"
       , testProperty "signum"      $ unary signum
       ]
 
-    , testProperty "0 identity of +" $ \a -> a + 0 === a
-    , testProperty "1 identity of *" $ \a -> 1 * a === a
-    , testProperty "0 identity of *" $ \a -> 0 * a === 0
+    , testProperty "0 identity of +" $ \a -> a + 0 === theSci a
+    , testProperty "1 identity of *" $ \a -> 1 * a === theSci a
+    , testProperty "0 identity of *" $ \a -> 0 * a === theSci 0
 
-    , testProperty "associativity of +"         $ \a b c -> a + (b + c) === (a + b) + c
-    , testProperty "commutativity of +"         $ \a b   -> a + b       === b + a
-    , testProperty "distributivity of * over +" $ \a b c -> a * (b + c) === a * b + a * c
+    , testProperty "associativity of +"         $ \a b c -> a + (b + c) === (a + b) + theSci c
+    , testProperty "commutativity of +"         $ \a b   -> a + b       === b + theSci a
+    , testProperty "distributivity of * over +" $ \a b c -> a * (b + c) === a * b + a * theSci c
 
-    , testProperty "subtracting the addition" $ \x y -> x + y - y === x
+    , testProperty "subtracting the addition" $ \x y -> x + y - y === theSci x
 
-    , testProperty "+ and negate" $ \x -> x + negate x === 0
-    , testProperty "- and negate" $ \x -> x - negate x === x + x
+    , testProperty "+ and negate" $ \x -> theSci x + negate x === 0
+    , testProperty "- and negate" $ \x -> theSci x - negate x === x + x
 
-    , smallQuick "abs . negate == id"
-        (SC.over   nonNegativeScientificSeries $ \x -> abs (negate x) === x)
-        (QC.forAll nonNegativeScientificGen    $ \x -> abs (negate x) === x)
+    , testProperty "abs . negate == id"
+        (QC.forAll nonNegativeScientificGen    $ \x -> abs (negate x) === theSci x)
     ]
 
   , testGroup "Real"
     [ testProperty "fromRational . toRational == id" $ \x ->
-        (fromRational . toRational) x === x
+        (fromRational . toRational) x === theSci x
     ]
 
   , testGroup "RealFrac"
@@ -238,9 +231,7 @@ main = testMain $ testGroup "scientific"
                     s' = normalize s
       , testProperty "Integer == Right" $ \(i::Integer) ->
           (floatingOrInteger (fromInteger i) :: Either Double Integer) == Right i
-      , smallQuick "Double == Left"
-          (\(d::Double) -> genericIsFloating d SC.==>
-             (floatingOrInteger (realToFrac d) :: Either Double Integer) == Left d)
+      , testProperty "Double == Left"
           (\(d::Double) -> genericIsFloating d QC.==>
              (floatingOrInteger (realToFrac d) :: Either Double Integer) == Left d)
       ]
@@ -276,6 +267,10 @@ main = testMain $ testGroup "scientific"
     ]
   ]
 
+-- used as type annotation
+theSci :: Scientific -> Scientific
+theSci = id
+
 testMain :: TestTree -> IO ()
 testMain = defaultMainWithIngredients defaultIngredients
 
@@ -302,7 +297,6 @@ toDecimalDigits_eq_floatToDigits d =
 conversionsProperties :: forall realFloat.
                          ( RealFloat    realFloat
                          , QC.Arbitrary realFloat
-                         , SC.Serial IO realFloat
                          , Show         realFloat
                          )
                       => realFloat -> [TestTree]
@@ -338,23 +332,6 @@ toBoundedIntegerConversion _ s =
                  s < fromIntegral (minBound :: i) ||
                  s > fromIntegral (maxBound :: i)
 
-testProperty :: (SC.Testable IO test, QC.Testable test)
-             => TestName -> test -> TestTree
-testProperty n test = smallQuick n test test
-
-smallQuick :: (SC.Testable IO smallCheck, QC.Testable quickCheck)
-             => TestName -> smallCheck -> quickCheck -> TestTree
-smallQuick n sc qc = testGroup n
-                     [ SC.testProperty "smallcheck" sc
-                     , QC.testProperty "quickcheck" qc
-                     ]
-
--- | ('==') specialized to 'Scientific' so we don't have to put type
--- signatures everywhere.
-(===) :: Scientific -> Scientific -> Bool
-(===) = (==)
-infix 4 ===
-
 bin :: (forall a. Num a => a -> a -> a) -> Scientific -> Scientific -> Bool
 bin op a b = toRational (a `op` b) == toRational a `op` toRational b
 
@@ -378,10 +355,10 @@ toDecimalDigits_laws x =
 
   in rule1 && rule2 && rule3 && rule4
 
-properFraction_laws :: Scientific -> Bool
-properFraction_laws x = fromInteger n + f === x        &&
-                        (positive n == posX || n == 0) &&
-                        (positive f == posX || f == 0) &&
+properFraction_laws :: Scientific -> Property
+properFraction_laws x = fromInteger n + f === x        .&&.
+                        (positive n == posX || n == 0) .&&.
+                        (positive f == posX || f == 0) .&&.
                         abs f < 1
     where
       posX = positive x
@@ -417,23 +394,6 @@ newtype NegativeInt = NegativeInt Int
 instance Bounded NegativeInt where
     minBound = -100
     maxBound = -10
-
-----------------------------------------------------------------------
--- SmallCheck instances
-----------------------------------------------------------------------
-
-instance (Monad m) => SC.Serial m Scientific where
-    series = scientifics
-
-scientifics :: (Monad m) => SC.Series m Scientific
-scientifics = SC.cons2 scientific
-
-nonNegativeScientificSeries :: (Monad m) => SC.Series m Scientific
-nonNegativeScientificSeries = liftM SC.getNonNegative SC.series
-
-normalizedScientificSeries :: (Monad m) => SC.Series m Scientific
-normalizedScientificSeries = liftM Scientific.normalize SC.series
-
 
 ----------------------------------------------------------------------
 -- QuickCheck instances
