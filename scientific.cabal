@@ -64,9 +64,11 @@ flag integer-simple
   default:     False
 
 library
+  -- main module first, so it's loaded into cabal repl.
+  exposed-modules:
+    Data.Scientific
   exposed-modules:
     Data.ByteString.Builder.Scientific
-    Data.Scientific
     Data.Text.Lazy.Builder.Scientific
 
   other-modules:

@@ -33,8 +33,13 @@ main :: IO ()
 main = testMain $ testGroup "scientific"
   [ testGroup "DoS protection"
     [ testGroup "Eq"
-      [ testCase "1e1000000" $ assertBool "" $
-          (read "1e1000000" :: Scientific) == (read "1e1000000" :: Scientific)
+      [ testCase "1e1000000" $ assertBool "" $ (read "1e1000000" :: Scientific) == (read "1e1000000" :: Scientific)
+      , testCase "1e1000000 ineq" $ assertBool "" $ (read "1e1000000" :: Scientific) /= (read "1e1000002" :: Scientific)
+
+      -- this also indirectly checks that 'read' is fast enough.
+      , testCase "1e1000000 and" $ assertBool "" $
+          (read "1e1000000" :: Scientific) ==
+          (read ('1' : replicate 1000000 '0'))
       ]
     , testGroup "Ord"
       [ testCase "compare 1234e1000000 123e1000001" $
@@ -187,7 +192,7 @@ main = testMain $ testGroup "scientific"
       [ testProperty "properFraction" $ \x ->
           let (n1::Integer, f1::Scientific) = properFraction x
               (n2::Integer, f2::Rational)   = properFraction (toRational x)
-          in (n1 == n2) && (f1 == fromRational f2)
+          in (n1 === n2) .&&. (f1 === fromRational f2)
 
       , testProperty "round" $ \(x::Scientific) ->
           (round x :: Integer) == round (toRational x)
