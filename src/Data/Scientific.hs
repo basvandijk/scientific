@@ -898,7 +898,8 @@ scientificP = do
       step a digit = a * 10 + fromIntegral digit
       {-# INLINE step #-}
 
-  n <- foldDigits step 0
+  ds <- ReadP.munch1 isDecimal
+  let n = read ds :: Integer
 
   let s = SP n 0
       fractional = foldDigits (\(SP a e) digit ->
