@@ -14,7 +14,7 @@ import           Data.Int
 import           Data.Word
 import           Data.Scientific                    as Scientific
 import           Test.Tasty
-import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion, assertBool)
+import           Test.Tasty.HUnit                          (testCase, (@?=), Assertion, assertBool, assertEqual)
 import qualified Test.SmallCheck                    as SC
 import qualified Test.SmallCheck.Series             as SC
 import qualified Test.Tasty.SmallCheck              as SC  (testProperty)
@@ -79,6 +79,10 @@ main = testMain $ testGroup "scientific"
       ]
     , testGroup "toBoundedInteger"
       [ testCase "1e1000000"  $ (toBoundedInteger (read "1e1000000" :: Scientific) :: Maybe Int) @?= Nothing
+      ]
+    , testGroup "formatScientific"
+      [ testCase "1000000 digits" $ assertEqual "" (2 + 1000000) $
+          length (formatScientific Scientific.Generic Nothing (scientific (10 ^ (1000000 :: Int) - 1) (-1000000)))
       ]
     ]
 
