@@ -208,13 +208,19 @@ instance Binary Scientific where
 -- scientific numbers coming from untrusted sources.
 instance Eq Scientific where
     Scientific c1 e1 == Scientific c2 e2
+        -- if exponents are equal we can compare the coefficients
         | e1 == e2 = c1 == c2
+
+        -- if numbers are normalised (i.e. no trailing zeroes in coefficient)
+        -- we can also compare them directly
+        | rem c1 10 /= 0
+        , rem c2 10 /= 0
+        = e1 == e2 && c1 == c2
 
     Scientific c1 e1 == Scientific c2 e2 = case compare c1 0 of
         EQ -> c2 == 0
         LT -> if c2 < 0 then eqScientific1 (-c1) e1 (-c2) e2 else False
         GT -> if c2 > 0 then eqScientific1   c1  e1   c2  e2 else False
-      where
 
 -- | Equality comparison of positive scientific numbers.
 -- The coefficients c1 and c2 are positive.
