@@ -80,6 +80,12 @@ main = testMain $ testGroup "scientific"
         , testCase "10...0e-20...0" $ False @=? isInteger (normalize (read $ '1' : replicate 1000000 '0' ++ "e-2000000" :: Scientific))
         ]
 
+    , testGroup "toDecimalDigits"
+        [ testCase "9...9" $ do
+            let (ds, n) = toDecimalDigits (read $ replicate 1000000 '9')
+            (1000000,1000000) @=? (length ds, n)
+        ]
+
     , testGroup "RealFrac"
       [ testGroup "floor"
         [ testCase "1e1000000"   $ (floor (read "1e1000000"   :: Scientific) :: Int) @?= 0
