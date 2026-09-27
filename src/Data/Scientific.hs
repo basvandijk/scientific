@@ -1128,13 +1128,23 @@ toDecimalDigits (Scientific c' e') =
 -- You should rarely have a need for this function since scientific numbers are
 -- automatically normalized when pretty-printed and in 'toDecimalDigits'.
 normalize :: Scientific -> Scientific
-normalize (Scientific c e)
-    | c > 0 =   normalizePositive   c  e
-    | c < 0 = -(normalizePositive (-c) e)
-    | otherwise {- c == 0 -} = Scientific 0 0
+normalize (Scientific c e) = case compare c 0 of
+    GT ->   normalizePositive   c  e
+    LT -> -(normalizePositive (-c) e)
+    EQ -> Scientific 0 0
 
 normalizePositive :: Integer -> Int -> Scientific
-normalizePositive !c !e = case quotRemInteger c 10 of
-                            (# c', r #)
-                                | r == 0    -> normalizePositive c' (e+1)
-                                | otherwise -> Scientific c e
+normalizePositive !c !e = case stripPowers c 10 of
+    (c', k) -> Scientific c' (e+k)
+
+stripPowers :: Integer -> Integer -> (Integer, Int)
+stripPowers !c !p
+    | r /= 0
+    = (c, 0)
+
+    -- remove factors of p*p; this speedups the normalisation by quite a bit.
+    | let (c', k) = stripPowers q (p*p)
+    , let (q', r') = quotRem c' p
+    = if r' == 0 then (q', 2 * k + 2) else (c', 2 * k + 1)
+  where
+    (q, r) = quotRem c p

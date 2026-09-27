@@ -73,6 +73,13 @@ main = testMain $ testGroup "scientific"
         , testCase "10...0e-1" $ Right (10 ^ ( 999999 :: Int) :: Integer) @=? floatingOrInteger @Double @Integer (read $ '1' : replicate 1000000 '0' ++ "e-1")
         ]
 
+    , testGroup "normalize"
+        [ testCase "1e1000000" $ True @=? isInteger (normalize (read "1e1000000" :: Scientific))
+        , testCase "10...0e-1" $ True @=? isInteger (normalize (read $ '1' : replicate 1000000 '0' ++ "e-1" :: Scientific))
+        , testCase "10...0e-10...0" $ True @=? isInteger (normalize (read $ '1' : replicate 1000000 '0' ++ "e-1000000" :: Scientific))
+        , testCase "10...0e-20...0" $ False @=? isInteger (normalize (read $ '1' : replicate 1000000 '0' ++ "e-2000000" :: Scientific))
+        ]
+
     , testGroup "RealFrac"
       [ testGroup "floor"
         [ testCase "1e1000000"   $ (floor (read "1e1000000"   :: Scientific) :: Int) @?= 0
