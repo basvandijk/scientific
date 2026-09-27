@@ -6,6 +6,7 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Data.Scientific
@@ -789,13 +790,12 @@ toBoundedRealFloat s@(Scientific c e)
 -- This function also guards against computing huge Integer magnitudes (@10^e@)
 -- that could fill up all space and crash your program.
 toBoundedInteger :: forall i. (Integral i, Bounded i) => Scientific -> Maybe i
-toBoundedInteger s@(Scientific c e)
+toBoundedInteger (isInteger_ -> Just (Scientific c e))
     | c == 0         = fromIntegerBounded 0
-    | not integral   = Nothing
+    | e == 0         = fromIntegerBounded c
     | dangerouslyBig = Nothing
     | otherwise      = fromIntegerBounded n
   where
-    integral = isInteger s
     l  = integerLog10' (abs c) + e
 
     -- whether logarithm of s is bigger than logarithm of source type bounds
@@ -812,10 +812,9 @@ toBoundedInteger s@(Scientific c e)
     -- This should not be evaluated if the given Scientific is dangerouslyBig
     -- since it could consume all space and crash the process
     n :: Integer
-    n = case compare e 0 of
-        GT -> c * magnitude e
-        LT -> c `div` magnitude (negate e)
-        EQ -> c
+    n = c * magnitude e
+
+toBoundedInteger _ = Nothing
 
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int #-}
 {-# SPECIALIZE toBoundedInteger :: Scientific -> Maybe Int8 #-}
