@@ -6,6 +6,7 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE CPP #-}
 
 -- |
 -- Module      :  Data.Scientific
@@ -137,7 +138,11 @@ import Language.Haskell.TH.Syntax (Lift (..))
 -- A scientific number with 'coefficient' @c@ and 'base10Exponent' @e@
 -- corresponds to the 'Fractional' number: @'fromInteger' c * 10 '^^' e@
 data Scientific = Scientific
-    { coefficient :: !Integer
+#if __GLASGOW_HASKELL__ >= 906
+    { coefficient :: {-# UNPACK #-} !Integer
+#else
+    { coefficient ::                !Integer
+#endif
       -- ^ The coefficient of a scientific number.
       --
       -- Note that this number is not necessarily normalized, i.e.

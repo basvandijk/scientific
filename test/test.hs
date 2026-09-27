@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeApplications #-}
@@ -24,6 +25,7 @@ import qualified Data.Text.Lazy                     as TL  (unpack)
 import qualified Data.Text.Lazy.Builder             as TLB (toLazyText)
 import qualified Data.Text.Lazy.Builder.Scientific  as T
 import           Numeric ( floatToDigits )
+import           GHC.Compact (compact, compactSize)
 
 import qualified Data.ByteString.Lazy.Char8         as BLC8
 import qualified Data.ByteString.Builder.Scientific as B
@@ -309,6 +311,12 @@ main = testMain $ testGroup "scientific"
     [ testProperty "isFloating" $ \s -> isFloating s ==      genericIsFloating s
     , testProperty "isInteger"  $ \s -> isInteger  s == not (genericIsFloating s)
     ]
+
+    , testCase "compact" $ do
+        let xs = [ fromInteger x | x <- [ 1 .. 1_000_000 ] ] :: [Scientific]
+        c <- compact xs
+        s <- compactSize c
+        print s
   ]
 
 -- used as type annotation

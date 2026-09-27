@@ -133,6 +133,7 @@ test-suite test-scientific
     , tasty-hunit       >=0.8
     , tasty-quickcheck  >=0.8
     , text
+    , ghc-compact
 
 benchmark bench-scientific
   type:             exitcode-stdio-1.0
