@@ -106,6 +106,7 @@ import           Data.Data                    (Data)
 import           Data.Hashable                (Hashable(..))
 import           Data.Int                     (Int8, Int16, Int32, Int64)
 import qualified Data.Map            as M     (Map, empty, insert, lookup)
+import           Data.Maybe                   (isJust)
 import           Data.Ratio                   ((%), numerator, denominator)
 import           Data.Typeable                (Typeable)
 import           Data.Word                    (Word8, Word16, Word32, Word64)
@@ -683,11 +684,6 @@ toIntegral :: (Num a) => Scientific -> a
 toIntegral (Scientific c e) = fromInteger c * magnitude e
 {-# INLINE toIntegral #-}
 
-
-
-
-
-
 ----------------------------------------------------------------------
 -- Conversions
 ----------------------------------------------------------------------
@@ -844,12 +840,11 @@ toBoundedInteger s@(Scientific c e)
 -- Also see: 'isFloating' or 'isInteger'.
 floatingOrInteger :: (RealFloat r, Integral i) => Scientific -> Either r i
 floatingOrInteger s
-    | base10Exponent s  >= 0 = Right (toIntegral   s)
-    | base10Exponent s' >= 0 = Right (toIntegral   s')
-    | otherwise              = Left  (toRealFloat  s')
-  where
-    s' = normalize s
+    | Just s' <- isInteger_ s
+    = Right (toIntegral s')
 
+    | otherwise
+    = Left (toRealFloat s)
 
 ----------------------------------------------------------------------
 -- Predicates
@@ -865,15 +860,30 @@ isFloating = not . isInteger
 --
 -- Also see: 'floatingOrInteger'.
 isInteger :: Scientific -> Bool
-isInteger (Scientific c e)
-    | e >= 0 = True
-    | c == 0 = True
-    | integerLog10' (abs c) < negate e = False
+isInteger = isJust . isInteger_
+
+-- | Like 'isInteger', but if number is integer, return
+-- 'Scientific' such that 'base10exponent' is non-negative.
+-- /Note:/ this resulting scientific number might still be not 'normalise'd.
+--
+-- @since 0.3.9
+--
+isInteger_ :: Scientific -> Maybe Scientific
+isInteger_ s@(Scientific c e)
+    | e >= 0 = Just s
+    | c == 0 = Just (Scientific c 0)
+    | integerLog10' (abs c) < negate e = Nothing
 
     -- here the magnitude (negate e) is smaller than c because of previous check.
     -- thus dividing by it once is at least as fast as normalising of whole scientific number
     -- in the worst case.
-    | otherwise = 0 == rem (abs c) (magnitude (negate e))
+    | c < 0
+    , let (q, r) = quotRem (negate c) (magnitude (negate e))
+    = if r == 0 then Just (Scientific (negate q) 0) else Nothing
+
+    | otherwise
+    , let (q, r) = quotRem c (magnitude (negate e))
+    = if r == 0 then Just (Scientific q 0) else Nothing
 
 ----------------------------------------------------------------------
 -- Parsing
