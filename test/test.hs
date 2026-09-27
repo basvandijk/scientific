@@ -68,6 +68,11 @@ main = testMain $ testGroup "scientific"
         , testCase "10...0e-1" $ Nothing @=? toBoundedInteger @Int (read $ '1' : replicate 1000000 '0' ++ "e-1")
         ]
 
+    , testGroup "floatingOrInteger"
+        [ testCase "1e1000000" $ Right (10 ^ (1000000 :: Int) :: Integer) @=? floatingOrInteger @Double @Integer (read "1e1000000") 
+        , testCase "10...0e-1" $ Right (10 ^ ( 999999 :: Int) :: Integer) @=? floatingOrInteger @Double @Integer (read $ '1' : replicate 1000000 '0' ++ "e-1")
+        ]
+
     , testGroup "RealFrac"
       [ testGroup "floor"
         [ testCase "1e1000000"   $ (floor (read "1e1000000"   :: Scientific) :: Int) @?= 0
