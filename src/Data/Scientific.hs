@@ -1108,15 +1108,10 @@ toDecimalDigits :: Scientific -> ([Int], Int)
 toDecimalDigits (Scientific 0  _)  = ([0], 0)
 toDecimalDigits (Scientific c' e') =
     case normalizePositive c' e' of
-      Scientific c e -> go c 0 []
+      Scientific c e -> (ds, length ds + e)
         where
-          go :: Integer -> Int -> [Int] -> ([Int], Int)
-          go 0 !n ds = (ds, ne) where !ne = n + e
-          go i !n ds = case i `quotRemInteger` 10 of
-                         (# q, r #) -> go q (n+1) (d:ds)
-                           where
-                             !d = fromIntegral r
-
+          -- show for Integer is faster than repeated quotRem _ 10
+          ds = map (\d -> ord d - ord '0') (show c)
 
 ----------------------------------------------------------------------
 -- Normalization
