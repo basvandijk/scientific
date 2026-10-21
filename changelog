@@ -1,3 +1,20 @@
+0.3.10.0
+
+	* Fix run-time crash (introduced in 0.3.9.0) in Eq and Ord when
+	  comparing values with (opposite) extreme exponents.
+	  Versions prior 0.3.9.0 instead reported invalid results.
+
+	* Document that 'normalize' may wrap around (overflow) the exponent.
+	  Therefore current 'toDecimalDigits' doesn't work correctly,
+	  and in turn values of 'Scientific' with exponents close to
+	  maxBound cannot be printed reliably.
+	  This is limitation has been there for at least a decade
+	  (it is present in scientific-0.3.4.4, the oldest scientific
+	  buildable with GHC-8.0).
+	  The toDecimalDigits issue cannot be fixed without at least changing
+	  its type signature (e.g. use Integer for a scientific exponent),
+	  thus postponed until next major release.
+
 0.3.9.0
 
 	* Reimplement most internal functions which used to normalize inputs

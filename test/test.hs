@@ -64,12 +64,12 @@ main = testMain $ testGroup "scientific"
         ]
 
     , testGroup "toBoundedInteger"
-        [ testCase "1e1000000" $ Nothing @=? toBoundedInteger @Int (read "1e1000000") 
+        [ testCase "1e1000000" $ Nothing @=? toBoundedInteger @Int (read "1e1000000")
         , testCase "10...0e-1" $ Nothing @=? toBoundedInteger @Int (read $ '1' : replicate 1000000 '0' ++ "e-1")
         ]
 
     , testGroup "floatingOrInteger"
-        [ testCase "1e1000000" $ Right (10 ^ (1000000 :: Int) :: Integer) @=? floatingOrInteger @Double @Integer (read "1e1000000") 
+        [ testCase "1e1000000" $ Right (10 ^ (1000000 :: Int) :: Integer) @=? floatingOrInteger @Double @Integer (read "1e1000000")
         , testCase "10...0e-1" $ Right (10 ^ ( 999999 :: Int) :: Integer) @=? floatingOrInteger @Double @Integer (read $ '1' : replicate 1000000 '0' ++ "e-1")
         ]
 
@@ -184,11 +184,26 @@ main = testMain $ testGroup "scientific"
     [ testProperty "==" $ \(s1 :: Scientific) (s2 :: Scientific) ->
         (s1 == s2) == (toRational s1 == toRational s2)
     , testProperty "s == s" $ \(s :: Scientific) -> s == s
+
+    , testProperty "extreme" $
+        -- This was true in scientific-0.3.8.0
+        -- due 'normalize' inherent limitation causing overflow
+        --
+        -- in scientific-0.3.9.0 this crashed.
+        not (scientific 10 maxBound == scientific 1 minBound)
+
     ]
 
   , testGroup "Ord"
     [ testProperty "compare" $ \(s1 :: Scientific) (s2 :: Scientific) ->
         compare s1 s2 == compare (toRational s1) (toRational s2)
+
+    , testProperty "extreme" $
+        -- This was true in scientific-0.3.8.0
+        -- due 'normalize' inherent limitation causing overflow
+        --
+        -- in scientific-0.3.9.0 this crashed.
+        compare (scientific 10 maxBound) (scientific 1 minBound) === GT
     ]
 
   , testGroup "Num"
@@ -279,7 +294,7 @@ main = testMain $ testGroup "scientific"
       ]
     , testGroup "toBoundedInteger"
       [ testGroup "correct conversion"
-      
+
         [ testCase "100e-2" $ toBoundedInteger @Int (read "100e-2") @?= Just 1
         , testProperty "Int64"       $ toBoundedIntegerConversion (undefined :: Int64)
         , testProperty "Word64"      $ toBoundedIntegerConversion (undefined :: Word64)
@@ -454,7 +469,7 @@ instance QC.Arbitrary Scientific where
       , (10, (\c e' e -> scientific (c * 10 ^ min 10 (abs e')) e) <$> QC.arbitrary <*> intGen <*> intGen)
       ]
 
-    shrink s = 
+    shrink s =
         [ scientific c e
         | (c, e) <- QC.shrink (Scientific.coefficient s, Scientific.base10Exponent s)
         ]
