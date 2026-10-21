@@ -75,7 +75,8 @@ uninitialised = error "Data.Scientific: uninitialised element"
 
 -- | @magnitude e == 10 ^ e@
 magnitude :: Num a => Int -> a
-magnitude e | e < maxExpt = cachedPow10 e
+magnitude e | e < 0       = error "magnitude: with negative argument"
+            | e < maxExpt = cachedPow10 e
             | otherwise   = cachedPow10 hi * 10 ^ (e - hi)
     where
       cachedPow10 = fromInteger . Primitive.indexArray expts10

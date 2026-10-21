@@ -237,8 +237,12 @@ eqScientific1 c1 e1 c2 e2
         GT -> c1 * magnitude (e1 - e2) == c2
         LT -> c1                       == c2 * magnitude (e2 - e1)
   where
-    log1 = integerLog10' c1 + e1
-    log2 = integerLog10' c2 + e2
+    -- note: the difference e1 - e2 may overflow and be negative,
+    -- however we shouldn't enter 'otherwise' branch in that case:
+    -- The log1 /= log2 check should rule those extreme cases.
+    --
+    log1 = toInteger (integerLog10' c1) + toInteger e1
+    log2 = toInteger (integerLog10' c2) + toInteger e2
 
 -- | Scientific numbers can be safely compared for ordering. No magnitude @10^e@
 -- is calculated so there's no risk of a blowup in space or time when comparing
@@ -263,8 +267,8 @@ cmpScientific c1 e1 c2 e2 = case compare log1 log2 of
         GT -> compare (c1 * magnitude (e1 - e2)) c2
         LT -> compare c1 (c2 * magnitude (e2 - e1))
   where
-    log1 = integerLog10' c1 + e1
-    log2 = integerLog10' c2 + e2
+    log1 = toInteger (integerLog10' c1) + toInteger e1
+    log2 = toInteger (integerLog10' c2) + toInteger e2
 
 -- | /WARNING:/ '+' and '-' compute the 'Integer' magnitude: @10^e@ where @e@ is
 -- the difference between the @'base10Exponent's@ of the arguments. If these
@@ -1109,6 +1113,10 @@ formatScientific format mbDecs s
 --
 -- The last property means that the coefficient will be normalized, i.e. doesn't
 -- contain trailing zeros.
+--
+-- /Note:/ 'toDecimalDigits' uses 'normalize' and therefore ill-behaves
+-- for extreme values.
+--
 toDecimalDigits :: Scientific -> ([Int], Int)
 toDecimalDigits (Scientific 0  _)  = ([0], 0)
 toDecimalDigits (Scientific c' e') =
@@ -1127,6 +1135,13 @@ toDecimalDigits (Scientific c' e') =
 --
 -- You should rarely have a need for this function since scientific numbers are
 -- automatically normalized when pretty-printed and in 'toDecimalDigits'.
+--
+-- /Note:/ 'normalize' ill-behaves for extreme values: the Int exponent
+-- may overflow
+--
+-- >>> normalize (scientific 10 maxBound) == scientific 1 minBound
+-- True
+--
 normalize :: Scientific -> Scientific
 normalize (Scientific c e) = case compare c 0 of
     GT ->   normalizePositive   c  e
