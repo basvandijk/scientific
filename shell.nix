@@ -8,8 +8,13 @@ let
                       then pkgs.haskellPackages
                       else pkgs.haskell.packages.${compiler};
 
-  drv = haskellPackages.callPackage (import ./scientific.nix) {};
-
 in
-
-  if pkgs.lib.inNixShell then drv.env else drv
+    haskellPackages.shellFor {
+      packages = hpkgs: [
+        (hpkgs.callPackage (import ./scientific.nix) {})
+      ];
+      nativeBuildInputs = [
+        pkgs.haskell-language-server
+        pkgs.cabal-install
+      ];
+    }
