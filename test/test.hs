@@ -143,6 +143,22 @@ main = testMain $ testGroup "scientific"
     , testCase "scientificP \"3.0e2\""   $ testScientificP "3.0e2"   [(3.0, "e2"), (300.0, "")]
     , testCase "scientificP \"+3.0e+2\"" $ testScientificP "+3.0e+2" [(3.0, "e+2"), (300.0, "")]
     , testCase "scientificP \"-3.0e-2\"" $ testScientificP "-3.0e-2" [(-3.0, "e-2"), (-3.0e-2, "")]
+    , testCase "scientificP exponent maxBound" $
+        testScientificP "1e9223372036854775807" [(1.0, "e9223372036854775807"), (scientific 1 maxBound, "")]
+    , testCase "scientificP exponent minBound" $
+        testScientificP "1e-9223372036854775808" [(1.0, "e-9223372036854775808"), (scientific 1 minBound, "")]
+    , testCase "scientificP fraction brings exponent into range" $
+        testScientificP "1.5e9223372036854775808" [(1.5, "e9223372036854775808"), (scientific 15 maxBound, "")]
+    , testCase "scientificP exponent above maxBound" $
+        testScientificP "1e9223372036854775808" [(1.0, "e9223372036854775808")]
+    , testCase "scientificP exponent below minBound" $
+        testScientificP "1e-9223372036854775809" [(1.0, "e-9223372036854775809")]
+    , testCase "scientificP exponent above 2^64" $
+        testScientificP "1e18446744073709551616" [(1.0, "e18446744073709551616")]
+    , testCase "reads exponent above maxBound" $
+        testReads "1e9223372036854775808" [(1.0, "e9223372036854775808")]
+    , testCase "scientificP long exponent" $
+        testScientificP ("1e" ++ replicate 1000000 '9') [(1.0, 'e' : replicate 1000000 '9')]
     ]
 
   , testGroup "Formatting"

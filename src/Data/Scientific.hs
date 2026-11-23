@@ -99,7 +99,7 @@ module Data.Scientific
 ----------------------------------------------------------------------
 
 import           Control.Exception            (throw, ArithException(DivideByZero))
-import           Control.Monad                (mplus)
+import           Control.Monad                (guard, mplus)
 import           Control.DeepSeq              (NFData, rnf)
 import           Data.Binary                  (Binary, get, put)
 import           Data.Char                    (intToDigit, ord)
@@ -948,14 +948,21 @@ scientificP = do
   let signedCoeff | pos       =   coeff
                   | otherwise = (-coeff)
 
+      -- The exponent is read as an 'Integer' so that it can't wrap around,
+      -- and rejected if it doesn't fit in an 'Int'. It stops growing past
+      -- 10^40, which is out of range even after adding 'expnt'.
+      stepE :: Integer -> Int -> Integer
+      stepE a digit | a > 10 ^ (40 :: Int) = a
+                    | otherwise            = step a digit
+
       eP = do posE <- positive
-              e <- foldDigits step 0
-              if posE
-                then return   e
-                else return (-e)
+              e <- foldDigits stepE 0
+              let e' = toInteger expnt + (if posE then e else negate e)
+              guard (e' >= toInteger (minBound :: Int) && e' <= toInteger (maxBound :: Int))
+              return (fromInteger e')
 
   (ReadP.satisfy isE >>
-           ((Scientific signedCoeff . (expnt +)) <$> eP)) `mplus`
+           (Scientific signedCoeff <$> eP)) `mplus`
      return (Scientific signedCoeff    expnt)
 
 
