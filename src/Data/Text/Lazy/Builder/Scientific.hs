@@ -50,6 +50,15 @@ formatScientificBuilder fmt decs scntfc
           (d:ds') -> singleton d <> singleton '.' <> fromString ds' <> singleton 'e' <> show_e'
           []      -> error $ "Data.Text.Lazy.Builder.Scientific.formatScientificBuilder" ++
                              "/doFmt/Exponent: []"
+       Just dec | dec <= 0 ->
+        -- No decimals: leave out the period too, as showEFloat does.
+        case is of
+         [0] -> "0e0"
+         _ ->
+          let (ei,is') = roundTo 1 is
+          in case map i2d (if ei > 0 then init is' else is') of
+               [] -> mempty
+               d:_ -> singleton d <> singleton 'e' <> decimal (e-1+ei)
        Just dec ->
         let dec' = max dec 1 in
         case is of

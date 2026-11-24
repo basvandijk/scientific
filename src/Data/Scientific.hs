@@ -1069,7 +1069,17 @@ formatScientific format mbDecs s
                            Just dec -> fmtAsFixedDecs dec x
 
     fmtAsExponentDecs :: Int -> ([Int], Int) -> String
-    fmtAsExponentDecs dec (is, e) =
+    fmtAsExponentDecs dec (is, e)
+      -- No decimals: leave out the period too, as showEFloat does.
+      | dec <= 0 =
+            case is of
+             [0] -> "0e0"
+             _ ->
+              let (ei,is') = roundTo 1 is
+              in case map intToDigit (if ei > 0 then init is' else is') of
+                   [] -> ""
+                   d:_ -> d:'e':show (e-1+ei)
+      | otherwise =
         let dec' = max dec 1 in
             case is of
              [0] -> '0' :'.' : take dec' (repeat '0') ++ "e0"

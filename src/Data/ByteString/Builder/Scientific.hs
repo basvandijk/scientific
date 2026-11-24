@@ -52,6 +52,15 @@ formatScientificBuilder fmt decs scntfc
           (d:ds') -> char8 d <> char8 '.' <> string8 ds' <> char8 'e' <> show_e'
           []      -> error $ "Data.ByteString.Builder.Scientific.formatScientificBuilder" ++
                              "/doFmt/Exponent: []"
+       Just dec | dec <= 0 ->
+        -- No decimals: leave out the period too, as showEFloat does.
+        case is of
+         [0] -> byteStringCopy "0e0"
+         _ ->
+          let (ei,is') = roundTo 1 is
+          in case map i2d (if ei > 0 then init is' else is') of
+                [] -> mempty
+                d:_ -> char8 d <> char8 'e' <> intDec (e-1+ei)
        Just dec ->
         let dec' = max dec 1 in
         case is of

@@ -23,7 +23,7 @@ import qualified Data.Binary                        as Binary (encode, decode)
 import qualified Data.Text.Lazy                     as TL  (unpack)
 import qualified Data.Text.Lazy.Builder             as TLB (toLazyText)
 import qualified Data.Text.Lazy.Builder.Scientific  as T
-import           Numeric ( floatToDigits )
+import           Numeric ( floatToDigits, showEFloat, showFFloat, showGFloat )
 
 import qualified Data.ByteString.Lazy.Char8         as BLC8
 import qualified Data.ByteString.Builder.Scientific as B
@@ -169,11 +169,33 @@ main = testMain $ testGroup "scientific"
           formatScientific Scientific.Generic Nothing s ==
           BLC8.unpack (B.toLazyByteString $
                         B.formatScientificBuilder Scientific.Generic Nothing s)
+
+      , testProperty "Text and ByteString, all formats and precisions" $ \s ->
+          QC.conjoin
+            [ formatScientific fmt p s ===
+                TL.unpack (TLB.toLazyText $ T.formatScientificBuilder fmt p s)
+              .&&.
+              formatScientific fmt p s ===
+                BLC8.unpack (B.toLazyByteString $ B.formatScientificBuilder fmt p s)
+            | fmt <- [Scientific.Generic, Scientific.Exponent, Scientific.Fixed]
+            , p <- Nothing : map Just [0, 1, 2, 5]
+            ]
       ]
 
     , testProperty "formatScientific_fromFloatDigits" $ \(d::Double) ->
         formatScientific Scientific.Generic Nothing (Scientific.fromFloatDigits d) ==
         show d
+
+    -- Scientific has no negative zero.
+    , testProperty "formatScientific_fromFloatDigits with precision" $ \(d::Double) ->
+        not (isNegativeZero d) QC.==>
+          let s = Scientific.fromFloatDigits d
+          in QC.conjoin
+               [ formatScientific Scientific.Exponent (Just n) s === showEFloat (Just n) d ""
+                 .&&. formatScientific Scientific.Fixed (Just n) s === showFFloat (Just n) d ""
+                 .&&. formatScientific Scientific.Generic (Just n) s === showGFloat (Just n) d ""
+               | n <- [0, 1, 2, 5]
+               ]
 
     -- , testProperty "formatScientific_realToFrac" $ \(d::Double) ->
     --     formatScientific B.Generic Nothing (realToFrac d :: Scientific) ==
